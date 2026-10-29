@@ -18,3 +18,10 @@ trap 'rm -rf "$test_build_dir"' EXIT HUP INT TERM
   "$repo_dir/Core/Src/haptic_controller.c" \
   -lm -o "$test_build_dir/test_haptic_app"
 "$test_build_dir/test_haptic_app"
+# Exercise serial output against USART/GPIO register doubles, including stalls.
+"${CC:-cc}" -std=c11 -Wall -Wextra -Werror -pedantic \
+  -I"$repo_dir/Core/Inc" -include "$repo_dir/tests/mock/diagnostics_hal.h" \
+  "$repo_dir/tests/test_haptic_diagnostics.c" \
+  "$repo_dir/Core/Src/haptic_diagnostics.c" \
+  -o "$test_build_dir/test_haptic_diagnostics"
+"$test_build_dir/test_haptic_diagnostics"

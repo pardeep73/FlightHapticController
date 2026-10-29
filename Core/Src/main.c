@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "haptic_app.h"
+#include "haptic_diagnostics.h"
 
 /* USER CODE END Includes */
 
@@ -97,6 +98,7 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   /* Start the 50 Hz sensor/servo controller after generated peripheral setup. */
+  HapticDiagnostics_Init();
   HapticApp_Init(&hi2c1, &htim3);
   /* USER CODE END 2 */
 
@@ -108,6 +110,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     HapticApp_Poll();
+    HapticDiagnostics_Poll();
   }
   /* USER CODE END 3 */
 }

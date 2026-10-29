@@ -210,6 +210,20 @@ Mode and robustness checks:
 
 ## Evidence still required for submission
 
+The serial monitor on PA9/USART1 now reports a status line each second at
+115200 baud. `IMU=OK` means the current acceleration sample was valid;
+`mode=AUTO` may still be latched from an earlier fault and requires a safe,
+fresh button press. `IMU=FAULT` identifies the failed operation and includes
+the register address, WHO_AM_I value, HAL result and I2C error flags. Record
+that exact line when diagnosing a red-only startup instead of inferring sensor
+health from the mode LED.
+
+Register transfers use `HAL_I2C_Mem_Read/Write` with 8-bit addresses. Reads use
+a repeated START and a six-byte acceleration burst. Startup waits 100 ms after
+waking the sensor; a failed bus connection is retried after reinitializing I2C.
+Host tests exercise these API contracts and simulated wake/recovery conditions;
+they do not execute the Wokwi peripheral model.
+
 Build and host-side controller checks can validate compilation, angle equations,
 FSM transitions, and command values. They do not establish that Wokwi rendered
 the correct servo direction, that I2C transactions succeeded in the simulator,

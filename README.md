@@ -66,6 +66,8 @@ require different calibration.
   servo angle targets and latched mode transitions.
 - `Core/Src/haptic_app.c`: I2C initialization/burst reads, signed acceleration
   decoding, 20 ms scheduling, 30 ms button debounce and PWM/LED output.
+- `Core/Src/haptic_diagnostics.c`: USART1/PA9 status output at 115200 baud,
+  displayed in the Wokwi terminal to distinguish sensor errors from autopilot.
 - `Core/Src/main.c`: generated peripheral setup and application polling.
 - `tests/`: native regression checks; run with `make test`.
 - `docs/assignment-validation.md`: FSM diagrams, boundary decisions and 1 g
@@ -83,3 +85,23 @@ STM32 startup, CMSIS and HAL code retain their existing vendor notices. New
 controller, integration, tests and documentation were AI-assisted; they are not
 attributed to lecture material or to the student. This repository does not
 contain an observed-results video or a completed personal report.
+
+## If the green LED flashes once and only red stays on
+
+The initial green indication appears before sensor initialization finishes.
+Red can indicate either a sensor fault or a healthy, latched autopilot mode.
+Open the **Wokwi Terminal** and read the status messages from USART1 on PA9.
+They report sensor validity, the failing sensor operation, the I2C HAL status
+and error, the last identity-register value, and measured angles when valid.
+
+At level (`X=0, Y=0, Z=1`), a valid sensor reading with autopilot still on
+requires a fresh blue-button press to restore manual. An active sensor fault
+blocks manual release. Check the diagram's PB8/SCL, PB9/SDA, AD0/GND and power
+connections if communication fails, and keep the exact terminal error for
+diagnosis. Do not change the safety checks to force the green LED on.
+
+The updated sensor adapter uses the HAL register-memory APIs, including a
+repeated START for reads, instead of the generic master transmitter's TXDR
+preload path. It waits 100 ms after waking the MPU6050 and reinitializes I2C
+before retrying a failed connection. These changes are compiled and covered by
+host adapter tests; their behavior in the user's Wokwi session must be checked.

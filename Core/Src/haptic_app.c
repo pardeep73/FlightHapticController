@@ -16,6 +16,7 @@
 #define I2C_TIMEOUT_MS 5U
 
 HapticController haptic_controller;
+HapticAppStatus haptic_app_status;
 static I2C_HandleTypeDef *sensor_i2c;
 static TIM_HandleTypeDef *servo_timer;
 static uint32_t last_sample_ms;
@@ -26,30 +27,45 @@ static GPIO_PinState button_stable;
 static bool sensor_ready;
 static bool pending_press;
 
-/* Read a burst through a register-selection write and subsequent read. */
+/*
+ * Read a device register with a repeated START. The memory API issues START
+ * before writing TXDR, avoiding the newer generic master API's preload path.
+ */
 static bool Sensor_Read(uint8_t reg, uint8_t *data, uint16_t length)
 {
-  return HAL_I2C_Master_Transmit(sensor_i2c, MPU_ADDRESS, &reg, 1,
-                                  I2C_TIMEOUT_MS) == HAL_OK
-      && HAL_I2C_Master_Receive(sensor_i2c, MPU_ADDRESS, data, length,
-                                  I2C_TIMEOUT_MS) == HAL_OK;
+  haptic_app_status.register_address = reg;
+  haptic_app_status.hal_status = HAL_I2C_Mem_Read(sensor_i2c, MPU_ADDRESS,
+      reg, I2C_MEMADD_SIZE_8BIT, data, length, I2C_TIMEOUT_MS);
+  haptic_app_status.i2c_error = HAL_I2C_GetError(sensor_i2c);
+  return haptic_app_status.hal_status == HAL_OK;
 }
 
-/* Writes include register address and value in one I2C transaction. */
+/* Write the register address followed by its value through the memory API. */
 static bool Sensor_Write(uint8_t reg, uint8_t value)
 {
-  uint8_t data[2] = {reg, value};
-  return HAL_I2C_Master_Transmit(sensor_i2c, MPU_ADDRESS, data, 2,
-                                  I2C_TIMEOUT_MS) == HAL_OK;
+  haptic_app_status.register_address = reg;
+  haptic_app_status.hal_status = HAL_I2C_Mem_Write(sensor_i2c, MPU_ADDRESS,
+      reg, I2C_MEMADD_SIZE_8BIT, &value, 1, I2C_TIMEOUT_MS);
+  haptic_app_status.i2c_error = HAL_I2C_GetError(sensor_i2c);
+  return haptic_app_status.hal_status == HAL_OK;
 }
 
 /* Confirm the expected device, wake it, and select +/-2g (16384 counts/g). */
 static bool Sensor_Init(void)
 {
-  uint8_t identity = 0;
-  return Sensor_Read(MPU_WHO_AM_I, &identity, 1) && identity == 0x68U
-      && Sensor_Write(MPU_PWR_MGMT_1, 0x00U)
-      && Sensor_Write(MPU_ACCEL_CONFIG, 0x00U);
+  haptic_app_status.identity = 0;
+  haptic_app_status.fault = HAPTIC_SENSOR_WHO_READ;
+  if (!Sensor_Read(MPU_WHO_AM_I, &haptic_app_status.identity, 1)) return false;
+  haptic_app_status.fault = HAPTIC_SENSOR_IDENTITY;
+  if (haptic_app_status.identity != 0x68U) return false;
+  haptic_app_status.fault = HAPTIC_SENSOR_WAKE;
+  if (!Sensor_Write(MPU_PWR_MGMT_1, 0x00U)) return false;
+  haptic_app_status.fault = HAPTIC_SENSOR_CONFIG;
+  if (!Sensor_Write(MPU_ACCEL_CONFIG, 0x00U)) return false;
+  /* Wait AFTER clearing sleep so a first zero sample cannot be a wake artifact. */
+  HAL_Delay(100);
+  haptic_app_status.fault = HAPTIC_SENSOR_NONE;
+  return true;
 }
 
 /* Decode signed big-endian values without implementation-defined signed casts. */
@@ -108,6 +124,7 @@ void HapticApp_Init(I2C_HandleTypeDef *i2c, TIM_HandleTypeDef *timer)
 {
   sensor_i2c = i2c;
   servo_timer = timer;
+  haptic_app_status = (HapticAppStatus){0};
   Haptic_Init(&haptic_controller);
   /* A button held at boot must be released before it can generate an edge. */
   button_candidate = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_12);
@@ -147,8 +164,17 @@ void HapticApp_Poll(void)
 
   if (!sensor_ready && (uint32_t)(now - last_retry_ms) >= SENSOR_RETRY_MS)
   {
-    last_retry_ms = now;
-    sensor_ready = Sensor_Init();
+    /* Reset the HAL/peripheral state before retrying a failed transaction. */
+    haptic_app_status.hal_status = HAL_I2C_DeInit(sensor_i2c);
+    if (haptic_app_status.hal_status == HAL_OK)
+    {
+      haptic_app_status.hal_status = HAL_I2C_Init(sensor_i2c);
+    }
+    haptic_app_status.i2c_error = HAL_I2C_GetError(sensor_i2c);
+    haptic_app_status.fault = HAPTIC_SENSOR_RECOVERY;
+    sensor_ready = haptic_app_status.hal_status == HAL_OK && Sensor_Init();
+    last_retry_ms = HAL_GetTick();
+    last_sample_ms = last_retry_ms;
     /* Allow at least one sample period after waking the sensor. */
     Haptic_Update(&haptic_controller, NULL, false, false);
     pending_press = false;
@@ -160,6 +186,8 @@ void HapticApp_Poll(void)
     const bool read_ok = Sensor_Read(MPU_ACCEL_XOUT_H, bytes, sizeof bytes);
     valid = read_ok && Haptic_CalculateAngles(Acceleration(&bytes[0]),
                  Acceleration(&bytes[2]), Acceleration(&bytes[4]), &angles);
+    haptic_app_status.fault = !read_ok ? HAPTIC_SENSOR_ACCEL_READ
+        : (valid ? HAPTIC_SENSOR_NONE : HAPTIC_SENSOR_ACCEL_INVALID);
     /* A transfer failure triggers periodic re-initialization, without blocking. */
     if (!read_ok)
     {
