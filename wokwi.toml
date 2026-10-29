@@ -1,0 +1,4 @@
+[wokwi]
+version = 1
+firmware = 'Debug/FlightHapticController.elf'
+elf = 'Debug/FlightHapticController.elf'

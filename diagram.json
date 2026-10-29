@@ -1,0 +1,325 @@
+{
+  "version": 1,
+  "author": "Student Name (student_id); generated project",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-text",
+      "id": "lbl_name",
+      "top": -200,
+      "left": -100,
+      "attrs": {
+        "text": "Student Name (student_id)"
+      }
+    },
+    {
+      "type": "board-st-nucleo-c031c6",
+      "id": "nucleo",
+      "top": 10,
+      "left": -50,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-mpu6050",
+      "id": "imu",
+      "top": -150,
+      "left": 300,
+      "attrs": {
+        "accelX": "0",
+        "accelY": "0",
+        "accelZ": "1"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "autopilot_button",
+      "top": 80,
+      "left": -240,
+      "attrs": {
+        "color": "blue",
+        "label": "AUTOPILOT / MANUAL",
+        "bounce": "1"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_auto",
+      "top": -100,
+      "left": -210,
+      "attrs": {
+        "color": "red",
+        "label": "AUTOPILOT"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_manual",
+      "top": -100,
+      "left": -120,
+      "attrs": {
+        "color": "green",
+        "label": "MANUAL"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_auto",
+      "top": -30,
+      "left": -210,
+      "attrs": {
+        "value": "330"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_manual",
+      "top": -30,
+      "left": -120,
+      "attrs": {
+        "value": "330"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_scl",
+      "top": -60,
+      "left": 320,
+      "attrs": {
+        "value": "4700"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_sda",
+      "top": -30,
+      "left": 320,
+      "attrs": {
+        "value": "4700"
+      }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo_pitch",
+      "top": 50,
+      "left": 350,
+      "attrs": {
+        "horn": "single"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "lbl_pitch",
+      "top": 30,
+      "left": 365,
+      "attrs": {
+        "text": "PITCH"
+      }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo_roll",
+      "top": 170,
+      "left": 350,
+      "attrs": {
+        "horn": "single"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "lbl_roll",
+      "top": 150,
+      "left": 365,
+      "attrs": {
+        "text": "ROLL"
+      }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo_tilt",
+      "top": 290,
+      "left": 350,
+      "attrs": {
+        "horn": "single"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "lbl_tilt",
+      "top": 270,
+      "left": 365,
+      "attrs": {
+        "text": "TILT"
+      }
+    }
+  ],
+  "connections": [
+    [
+      "nucleo:PB8",
+      "imu:SCL",
+      "green",
+      []
+    ],
+    [
+      "nucleo:PB9",
+      "imu:SDA",
+      "blue",
+      []
+    ],
+    [
+      "nucleo:3V3.1",
+      "imu:VCC",
+      "red",
+      []
+    ],
+    [
+      "nucleo:GND.1",
+      "imu:GND",
+      "black",
+      []
+    ],
+    [
+      "imu:AD0",
+      "nucleo:GND.1",
+      "black",
+      []
+    ],
+    [
+      "nucleo:3V3.1",
+      "r_scl:1",
+      "red",
+      []
+    ],
+    [
+      "r_scl:2",
+      "nucleo:PB8",
+      "green",
+      []
+    ],
+    [
+      "nucleo:3V3.1",
+      "r_sda:1",
+      "red",
+      []
+    ],
+    [
+      "r_sda:2",
+      "nucleo:PB9",
+      "green",
+      []
+    ],
+    [
+      "nucleo:PB5",
+      "servo_pitch:PWM",
+      "orange",
+      []
+    ],
+    [
+      "nucleo:5V.1",
+      "servo_pitch:V+",
+      "red",
+      []
+    ],
+    [
+      "nucleo:GND.1",
+      "servo_pitch:GND",
+      "black",
+      []
+    ],
+    [
+      "nucleo:PB4",
+      "servo_roll:PWM",
+      "orange",
+      []
+    ],
+    [
+      "nucleo:5V.1",
+      "servo_roll:V+",
+      "red",
+      []
+    ],
+    [
+      "nucleo:GND.1",
+      "servo_roll:GND",
+      "black",
+      []
+    ],
+    [
+      "nucleo:PB0.1",
+      "servo_tilt:PWM",
+      "orange",
+      []
+    ],
+    [
+      "nucleo:5V.1",
+      "servo_tilt:V+",
+      "red",
+      []
+    ],
+    [
+      "nucleo:GND.1",
+      "servo_tilt:GND",
+      "black",
+      []
+    ],
+    [
+      "nucleo:PA2",
+      "r_auto:1",
+      "green",
+      []
+    ],
+    [
+      "r_auto:2",
+      "led_auto:A",
+      "green",
+      []
+    ],
+    [
+      "led_auto:C",
+      "nucleo:GND.1",
+      "black",
+      []
+    ],
+    [
+      "nucleo:PB11",
+      "r_manual:1",
+      "green",
+      []
+    ],
+    [
+      "r_manual:2",
+      "led_manual:A",
+      "green",
+      []
+    ],
+    [
+      "led_manual:C",
+      "nucleo:GND.1",
+      "black",
+      []
+    ],
+    [
+      "nucleo:3V3.1",
+      "autopilot_button:1.l",
+      "red",
+      []
+    ],
+    [
+      "autopilot_button:2.l",
+      "nucleo:PA12",
+      "purple",
+      []
+    ],
+    [
+      "nucleo:PA9",
+      "$serialMonitor:RX",
+      "",
+      []
+    ]
+  ],
+  "dependencies": {},
+  "serialMonitor": {
+    "display": "always",
+    "convertEol": true,
+    "newline": "lf"
+  }
+}
