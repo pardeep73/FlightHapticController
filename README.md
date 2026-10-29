@@ -68,6 +68,8 @@ require different calibration.
   decoding, 20 ms scheduling, 30 ms button debounce and PWM/LED output.
 - `Core/Src/haptic_diagnostics.c`: USART1/PA9 status output at 115200 baud,
   displayed in the Wokwi terminal to distinguish sensor errors from autopilot.
+- `Core/Src/soft_i2c.c` and `haptic_soft_i2c.c`: bounded, open-drain I2C
+  fallback using the same PB8/PB9 wires when hardware I2C times out.
 - `Core/Src/main.c`: generated peripheral setup and application polling.
 - `tests/`: native regression checks; run with `make test`.
 - `docs/assignment-validation.md`: FSM diagrams, boundary decisions and 1 g
@@ -105,3 +107,17 @@ repeated START for reads, instead of the generic master transmitter's TXDR
 preload path. It waits 100 ms after waking the MPU6050 and reinitializes I2C
 before retrying a failed connection. These changes are compiled and covered by
 host adapter tests; their behavior in the user's Wokwi session must be checked.
+
+If the hardware I2C operation times out (`err=0x00000020`), the firmware now
+disables that peripheral and tries standards-based GPIO I2C on the same PB8/PB9
+connections. It drives the lines low or releases them, checks every slave ACK,
+reads the real WHO_AM_I register and acceleration bytes, and bounds clock
+stretching and recovery. Ordinary sensor NACKs do not select this fallback.
+No wiring change or synthetic sensor data is involved.
+
+The terminal includes `bus=HW` or `bus=GPIO`. `hwerr` retains the original
+hardware timeout after a successful fallback, while `err` reports the current
+transport result. Thus `IMU=OK ... err=0x00000000 bus=GPIO hwerr=0x00000020`
+means genuine register reads succeeded after the hardware timeout. A failed
+fallback still reports `IMU=FAULT` and blocks manual release. The host tests
+include an edge-driven I2C slave model; Wokwi readback remains a separate check.

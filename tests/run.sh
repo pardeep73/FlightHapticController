@@ -25,3 +25,5 @@ trap 'rm -rf "$test_build_dir"' EXIT HUP INT TERM
   "$repo_dir/Core/Src/haptic_diagnostics.c" \
   -o "$test_build_dir/test_haptic_diagnostics"
 "$test_build_dir/test_haptic_diagnostics"
+# Exercise bit-level bus transactions against an edge-driven slave model.
+"$repo_dir/tests/run_soft_i2c.sh"

@@ -1,5 +1,6 @@
 /* Exercise the real hardware adapter against register-aware HAL doubles. */
 #include "haptic_app.h"
+#include "haptic_soft_i2c.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,6 +36,14 @@ static uint8_t sample_bytes[6];
 static uint8_t identity;
 static int fail_read_register;
 static int fail_write_register;
+static uint32_t read_error_code;
+static bool soft_init_success;
+static unsigned soft_init_count;
+static unsigned soft_read_count;
+static unsigned soft_write_count;
+static int soft_fail_read_register;
+static int soft_fail_write_register;
+static SoftI2CResult soft_failure;
 static bool fail_recovery;
 static uint32_t last_error;
 static uint8_t write_registers[16];
@@ -66,7 +75,7 @@ HAL_StatusTypeDef HAL_I2C_Mem_Read(I2C_HandleTypeDef *handle,
   ++read_count;
   if ((int)reg == fail_read_register)
   {
-    last_error = 0x04U; /* HAL_I2C_ERROR_AF: address/data not acknowledged. */
+    last_error = read_error_code; /* Inject an actual HAL error bitmask. */
     return HAL_ERROR;
   }
   last_error = 0;
@@ -134,6 +143,49 @@ HAL_StatusTypeDef HAL_I2C_Init(I2C_HandleTypeDef *handle)
   return fail_recovery ? HAL_ERROR : HAL_OK;
 }
 
+/* Software-bus doubles test adapter selection, not electrical bus waveforms. */
+bool HapticSoftI2C_Init(void)
+{
+  ++soft_init_count;
+  return soft_init_success;
+}
+
+SoftI2CResult HapticSoftI2C_Read(uint8_t reg, uint8_t *data, uint16_t length)
+{
+  ++soft_read_count;
+  if ((int)reg == soft_fail_read_register) return soft_failure;
+  if (reg == 0x75U)
+  {
+    CHECK(length == 1);
+    *data = identity;
+  }
+  else
+  {
+    CHECK(reg == 0x3BU && length == sizeof sample_bytes);
+    if (sleeping || (uint32_t)(tick - wake_tick) < 100U)
+      memset(data, 0, length);
+    else
+      memcpy(data, sample_bytes, sizeof sample_bytes);
+  }
+  return SOFT_I2C_OK;
+}
+
+SoftI2CResult HapticSoftI2C_Write(uint8_t reg, uint8_t value)
+{
+  ++soft_write_count;
+  CHECK(reg == 0x6BU || reg == 0x1CU);
+  if ((int)reg == soft_fail_write_register) return soft_failure;
+  CHECK(write_count < sizeof write_values);
+  write_registers[write_count] = reg;
+  write_values[write_count++] = value;
+  if (reg == 0x6BU)
+  {
+    sleeping = (value & 0x40U) != 0;
+    wake_tick = tick;
+  }
+  return SOFT_I2C_OK;
+}
+
 static unsigned channel_index(uint32_t channel)
 {
   CHECK(channel == TIM_CHANNEL_1 || channel == TIM_CHANNEL_2
@@ -184,6 +236,11 @@ static void reset(GPIO_PinState initial_button)
   deinit_count = init_count = 0;
   identity = 0x68U;
   fail_read_register = fail_write_register = -1;
+  read_error_code = 0x04U;
+  soft_init_success = false;
+  soft_init_count = soft_read_count = soft_write_count = 0;
+  soft_fail_read_register = soft_fail_write_register = -1;
+  soft_failure = SOFT_I2C_NACK;
   fail_recovery = false;
   last_error = 0;
   write_count = 0;
@@ -418,8 +475,10 @@ static void test_wake_failure_diagnostics(void)
   CHECK(haptic_app_status.fault == HAPTIC_SENSOR_WAKE);
   CHECK(haptic_app_status.register_address == 0x6BU);
   CHECK(haptic_app_status.identity == 0x68U);
-  CHECK(haptic_app_status.hal_status == HAL_TIMEOUT);
-  CHECK(haptic_app_status.i2c_error == 0x20U);
+  CHECK(haptic_app_status.hal_status == HAL_ERROR);
+  CHECK(haptic_app_status.i2c_error == 0x10000U);
+  CHECK(haptic_app_status.hardware_error == 0x20U);
+  CHECK(haptic_app_status.software_i2c && soft_init_count == 1);
   CHECK(write_count == 0 && sleeping);
   check_auto();
   ++cases;
@@ -433,8 +492,10 @@ static void test_config_failure_diagnostics(void)
   CHECK(haptic_app_status.fault == HAPTIC_SENSOR_CONFIG);
   CHECK(haptic_app_status.register_address == 0x1CU);
   CHECK(haptic_app_status.identity == 0x68U);
-  CHECK(haptic_app_status.hal_status == HAL_TIMEOUT);
-  CHECK(haptic_app_status.i2c_error == 0x20U);
+  CHECK(haptic_app_status.hal_status == HAL_ERROR);
+  CHECK(haptic_app_status.i2c_error == 0x10000U);
+  CHECK(haptic_app_status.hardware_error == 0x20U);
+  CHECK(haptic_app_status.software_i2c && soft_init_count == 1);
   CHECK(write_count == 1);
   check_auto();
   ++cases;
@@ -489,6 +550,165 @@ static void test_recovery_failure_and_next_retry(void)
   ++cases;
 }
 
+/* A hardware progress timeout may use the same PB8/PB9 bus through GPIO. */
+static void test_timeout_fallback_reads_real_device(void)
+{
+  reset(GPIO_PIN_RESET);
+  fail_read_register = 0x75U;
+  read_error_code = 0x20U;
+  soft_init_success = true;
+  HapticApp_Init(&i2c, &timer);
+  CHECK(haptic_app_status.software_i2c);
+  CHECK(haptic_app_status.hardware_error == 0x20U);
+  CHECK(haptic_app_status.fault == HAPTIC_SENSOR_NONE);
+  CHECK(haptic_app_status.identity == 0x68U);
+  CHECK(haptic_app_status.hal_status == HAL_OK);
+  CHECK(haptic_app_status.i2c_error == 0U);
+  CHECK(deinit_count == 1 && init_count == 0);
+  CHECK(soft_init_count == 1 && soft_read_count == 1 && soft_write_count == 2);
+  CHECK(read_count == 1 && write_count == 2 && !sleeping);
+  CHECK((uint32_t)(tick - wake_tick) >= 100U);
+  after(20);
+  CHECK(haptic_controller.sensor_valid);
+  check_manual();
+  acceleration(0, 11585, 11585); after(20);
+  NEAR(haptic_controller.angles.roll_deg, 45.0f);
+  CHECK(pulses[0] == 1008U && pulses[1] == 1472U);
+  CHECK(read_count == 1 && soft_read_count == 3);
+  ++cases;
+}
+
+/* A normal address NACK is a device error, not an emulator progress failure. */
+static void test_nack_does_not_enable_fallback(void)
+{
+  reset(GPIO_PIN_RESET);
+  fail_read_register = 0x75U;
+  read_error_code = 0x04U;
+  soft_init_success = true;
+  HapticApp_Init(&i2c, &timer);
+  CHECK(!haptic_app_status.software_i2c);
+  CHECK(soft_init_count == 0 && soft_read_count == 0);
+  CHECK(haptic_app_status.fault == HAPTIC_SENSOR_WHO_READ);
+  CHECK(haptic_app_status.i2c_error == 0x04U);
+  CHECK(!haptic_controller.sensor_valid);
+  check_auto();
+  ++cases;
+}
+
+/* An absent sensor on the fallback bus must still cause a genuine safe fault. */
+static void test_software_bus_failure_and_safe_recovery(void)
+{
+  reset(GPIO_PIN_RESET);
+  fail_read_register = 0x75U;
+  read_error_code = 0x20U;
+  soft_init_success = true;
+  HapticApp_Init(&i2c, &timer);
+  after(20);
+  CHECK(haptic_controller.sensor_valid);
+  soft_fail_read_register = 0x3BU;
+  soft_failure = SOFT_I2C_NACK;
+  after(20);
+  CHECK(haptic_app_status.fault == HAPTIC_SENSOR_ACCEL_READ);
+  CHECK(haptic_app_status.i2c_error == 0x04U);
+  CHECK(!haptic_controller.sensor_valid);
+  check_auto();
+  CHECK(pulses[0] == 1472U && pulses[1] == 1472U && pulses[2] == 544U);
+  soft_fail_read_register = -1;
+  after(1000);
+  CHECK(soft_init_count == 2 && deinit_count == 1 && init_count == 0);
+  after(20);
+  CHECK(haptic_controller.sensor_valid);
+  check_auto();
+  button = GPIO_PIN_SET; after(1);
+  after(30); check_manual();
+  ++cases;
+}
+
+static void test_failed_fallback_remains_faulted_until_bus_recovers(void)
+{
+  reset(GPIO_PIN_RESET);
+  fail_read_register = 0x75U;
+  read_error_code = 0x20U;
+  HapticApp_Init(&i2c, &timer);
+  CHECK(haptic_app_status.software_i2c);
+  CHECK(haptic_app_status.hardware_error == 0x20U);
+  CHECK(haptic_app_status.fault == HAPTIC_SENSOR_WHO_READ);
+  CHECK(haptic_app_status.i2c_error == 0x10000U);
+  CHECK(haptic_app_status.identity == 0U);
+  CHECK(!haptic_controller.sensor_valid && soft_read_count == 0);
+  check_auto();
+  soft_init_success = true;
+  after(1000);
+  CHECK(soft_init_count == 2 && deinit_count == 1 && init_count == 0);
+  CHECK(haptic_app_status.identity == 0x68U);
+  after(20); CHECK(haptic_controller.sensor_valid);
+  check_auto();
+  button = GPIO_PIN_SET; after(1);
+  after(30); check_manual();
+  ++cases;
+}
+
+static void test_fallback_requires_correct_identity(void)
+{
+  reset(GPIO_PIN_RESET);
+  fail_read_register = 0x75U;
+  read_error_code = 0x20U;
+  soft_init_success = true;
+  identity = 0x12U;
+  HapticApp_Init(&i2c, &timer);
+  CHECK(haptic_app_status.software_i2c);
+  CHECK(haptic_app_status.fault == HAPTIC_SENSOR_IDENTITY);
+  CHECK(haptic_app_status.identity == 0x12U);
+  CHECK(soft_read_count == 1 && soft_write_count == 0);
+  CHECK(!haptic_controller.sensor_valid);
+  check_auto();
+  ++cases;
+}
+
+static void test_software_error_translation(void)
+{
+  const SoftI2CResult failures[] = {SOFT_I2C_TIMEOUT, SOFT_I2C_BUS_STUCK};
+  const uint32_t expected[] = {0x20U, 0x10000U};
+  for (unsigned i = 0; i < sizeof failures / sizeof failures[0]; ++i)
+  {
+    reset(GPIO_PIN_RESET);
+    fail_read_register = 0x75U;
+    read_error_code = 0x20U;
+    soft_init_success = true;
+    HapticApp_Init(&i2c, &timer);
+    soft_fail_read_register = 0x3BU;
+    soft_failure = failures[i];
+    after(20);
+    CHECK(haptic_app_status.fault == HAPTIC_SENSOR_ACCEL_READ);
+    CHECK(haptic_app_status.i2c_error == expected[i]);
+    CHECK(haptic_app_status.hal_status == HAL_ERROR);
+    CHECK(!haptic_controller.sensor_valid);
+    check_auto();
+  }
+  ++cases;
+}
+
+static void test_write_timeout_can_switch_to_software_bus(void)
+{
+  const int registers[] = {0x6BU, 0x1CU};
+  for (unsigned i = 0; i < sizeof registers / sizeof registers[0]; ++i)
+  {
+    reset(GPIO_PIN_RESET);
+    fail_write_register = registers[i];
+    soft_init_success = true;
+    HapticApp_Init(&i2c, &timer);
+    CHECK(haptic_app_status.software_i2c);
+    CHECK(haptic_app_status.fault == HAPTIC_SENSOR_NONE);
+    CHECK(haptic_app_status.hardware_error == 0x20U);
+    CHECK(haptic_app_status.identity == 0x68U);
+    CHECK(write_count == 2 && soft_write_count == 2U - i);
+    CHECK(identity_count == 1 && soft_read_count == 0);
+    after(20); CHECK(haptic_controller.sensor_valid);
+    check_manual();
+  }
+  ++cases;
+}
+
 int main(void)
 {
   test_initialization_and_wake();
@@ -506,6 +726,13 @@ int main(void)
   test_config_failure_diagnostics();
   test_accel_read_and_invalid_diagnostics();
   test_recovery_failure_and_next_retry();
+  test_timeout_fallback_reads_real_device();
+  test_nack_does_not_enable_fallback();
+  test_software_bus_failure_and_safe_recovery();
+  test_failed_fallback_remains_faulted_until_bus_recovers();
+  test_fallback_requires_correct_identity();
+  test_software_error_translation();
+  test_write_timeout_can_switch_to_software_bus();
   printf("PASS: %u adapter cases, %u checks (register I2C, wake, PWM, debounce, recovery, diagnostics)\n",
          cases, checks);
   return EXIT_SUCCESS;

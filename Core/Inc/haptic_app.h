@@ -29,6 +29,8 @@ typedef struct
   uint32_t i2c_error;
   HAL_StatusTypeDef hal_status;
   HapticSensorFault fault;
+  bool software_i2c;
+  uint32_t hardware_error;
 } HapticAppStatus;
 
 extern HapticAppStatus haptic_app_status;

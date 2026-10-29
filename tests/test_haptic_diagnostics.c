@@ -100,7 +100,7 @@ static void reset(uint32_t initial_tick)
 /* Drain at a fixed timestamp: one call must correspond to exactly one byte. */
 static void drain_line(void)
 {
-  for (unsigned i = 0; i < 128U; ++i)
+  for (unsigned i = 0; i < 160U; ++i)
   {
     const bool sent = poll();
     if (!sent)
@@ -144,7 +144,7 @@ static void test_healthy_output_and_rate(void)
   CHECK(poll() && captured_length == 2U && captured[1] == 'o');
   drain_line();
   CHECK(strcmp(captured,
-      "mode=MANUAL IMU=OK who=0x68 reg=0x3B HAL=0 err=0x00000000 roll=-0.1 pitch=35.2 tilt=35.3\r\n") == 0);
+      "mode=MANUAL IMU=OK who=0x68 reg=0x3B HAL=0 err=0x00000000 bus=HW hwerr=0x00000000 roll=-0.1 pitch=35.2 tilt=35.3\r\n") == 0);
   const size_t length = captured_length;
   tick = 1999U; CHECK(!poll() && captured_length == length);
   tick = 2000U; CHECK(!poll() && captured_length == length);
@@ -164,7 +164,7 @@ static void test_healthy_autopilot_and_extreme_angles(void)
   CHECK(strstr(captured, "mode=AUTO IMU=OK") != NULL);
   CHECK(strstr(captured, "IMU=FAULT") == NULL);
   CHECK(strstr(captured, "roll=-180.0 pitch=-90.0 tilt=201.2\r\n") != NULL);
-  CHECK(captured_length < 128U);
+  CHECK(captured_length < 160U);
   ++cases;
 }
 
@@ -200,9 +200,9 @@ static void test_fault_operations_and_hex_fields(void)
     drain_line();
     CHECK(strstr(captured, "mode=AUTO IMU=FAULT fault=") != NULL);
     CHECK(strstr(captured, faults[i].description) != NULL);
-    CHECK(strstr(captured, "who=0x22 reg=0x6B HAL=3 err=0xDEADBEEF\r\n") != NULL);
+    CHECK(strstr(captured, "who=0x22 reg=0x6B HAL=3 err=0xDEADBEEF bus=HW hwerr=0x00000000\r\n") != NULL);
     CHECK(strstr(captured, "roll=") == NULL);
-    CHECK(captured_length < 128U);
+    CHECK(captured_length < 160U);
     ++cases;
   }
 }
@@ -255,6 +255,20 @@ static void test_tick_wrap(void)
   ++cases;
 }
 
+/* Preserve evidence of the hardware timeout after genuine GPIO recovery. */
+static void test_software_transport_status(void)
+{
+  reset(0U);
+  haptic_app_status.software_i2c = true;
+  haptic_app_status.hardware_error = 0x20U;
+  tick = 1000U; CHECK(!poll());
+  drain_line();
+  CHECK(strstr(captured, "IMU=OK") != NULL);
+  CHECK(strstr(captured, "bus=GPIO hwerr=0x00000020") != NULL);
+  CHECK(strstr(captured, "err=0x00000000 bus=") != NULL);
+  ++cases;
+}
+
 int main(void)
 {
   test_uart_initialization();
@@ -263,6 +277,7 @@ int main(void)
   test_fault_operations_and_hex_fields();
   test_nonblocking_tx_stall_and_recovery();
   test_tick_wrap();
+  test_software_transport_status();
   printf("PASS: %u diagnostics cases, %u checks (PA9 USART, readable status, queued TX, wrap)\n",
           cases, checks);
   return EXIT_SUCCESS;

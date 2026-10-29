@@ -14,7 +14,7 @@
 
 static uint32_t last_report_ms;
 static uint32_t tx_last_progress_ms;
-static char tx_buffer[128];
+static char tx_buffer[160];
 static uint16_t tx_position;
 
 /*
@@ -121,6 +121,7 @@ void HapticDiagnostics_Poll(void)
   /* Sample the application-owned status without changing its recovery state. */
   const HapticAppStatus status = haptic_app_status;
   const char *mode = haptic_controller.mode == HAPTIC_AUTOPILOT ? "AUTO" : "MANUAL";
+  const char *bus = status.software_i2c ? "GPIO" : "HW";
   if (haptic_controller.sensor_valid)
   {
     char roll[16];
@@ -130,18 +131,20 @@ void HapticDiagnostics_Poll(void)
     FormatAngle(pitch, haptic_controller.angles.pitch_deg);
     FormatAngle(tilt, haptic_controller.angles.tilt_deg);
     (void)snprintf(tx_buffer, sizeof tx_buffer,
-        "mode=%s IMU=OK who=0x%02X reg=0x%02X HAL=%u err=0x%08lX roll=%s pitch=%s tilt=%s\r\n",
+        "mode=%s IMU=OK who=0x%02X reg=0x%02X HAL=%u err=0x%08lX bus=%s hwerr=0x%08lX roll=%s pitch=%s tilt=%s\r\n",
         mode, (unsigned)status.identity,
         (unsigned)status.register_address, (unsigned)status.hal_status,
-        (unsigned long)status.i2c_error, roll, pitch, tilt);
+        (unsigned long)status.i2c_error, bus,
+        (unsigned long)status.hardware_error, roll, pitch, tilt);
   }
   else
   {
     (void)snprintf(tx_buffer, sizeof tx_buffer,
-        "mode=%s IMU=FAULT fault=%s who=0x%02X reg=0x%02X HAL=%u err=0x%08lX\r\n",
+        "mode=%s IMU=FAULT fault=%s who=0x%02X reg=0x%02X HAL=%u err=0x%08lX bus=%s hwerr=0x%08lX\r\n",
         mode, FaultDescription(status.fault), (unsigned)status.identity,
         (unsigned)status.register_address, (unsigned)status.hal_status,
-        (unsigned long)status.i2c_error);
+        (unsigned long)status.i2c_error, bus,
+        (unsigned long)status.hardware_error);
   }
   tx_position = 0U;
   tx_last_progress_ms = now;

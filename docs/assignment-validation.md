@@ -224,6 +224,14 @@ waking the sensor; a failed bus connection is retried after reinitializing I2C.
 Host tests exercise these API contracts and simulated wake/recovery conditions;
 they do not execute the Wokwi peripheral model.
 
+A hardware timeout now selects a bounded GPIO I2C fallback on the same PB8/PB9
+lines. This still reads the actual MPU6050 and rejects NACKs, stuck lines,
+invalid identity and invalid acceleration. Its protocol tests use a slave model
+that decodes START, address, data and ACK/NACK edges; they are not Wokwi runs.
+Check `bus=GPIO` and `IMU=OK` in the simulator to confirm actual communication.
+`hwerr=0x00000020` preserves the original hardware failure; `err` is the current
+bus result. Capture the exact line if the GPIO path also fails.
+
 Build and host-side controller checks can validate compilation, angle equations,
 FSM transitions, and command values. They do not establish that Wokwi rendered
 the correct servo direction, that I2C transactions succeeded in the simulator,
