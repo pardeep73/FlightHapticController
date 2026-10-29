@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "haptic_app.h"
 
 /* USER CODE END Includes */
 
@@ -95,69 +96,8 @@ int main(void)
   MX_I2C1_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-    /* Set initial servo pulse widths.
-     With a 48 MHz TIM3 clock and prescaler 47,
-     each timer count represents one microsecond. */
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 1500);
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 1500);
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 1000);
-
-  /* Start roll, pitch, and tilt PWM outputs. */
-  if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  if (HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-
-
-
-    /* Allow the simulated sensor time to start. */
-  HAL_Delay(100);
-
-  /* Read the MPU6050 identity register.
-     STM32 HAL expects the 7-bit device address shifted left once. */
-  uint8_t sensor_id = 0;
-  HAL_StatusTypeDef sensor_status;
-
-    /* Select the identity register using a separate write transaction. */
-  uint8_t identity_register = 0x75;
-
-  sensor_status = HAL_I2C_Master_Transmit(
-      &hi2c1,
-      (0x68 << 1),
-      &identity_register,
-      1,
-      100);
-
-  /* Read only if the register-selection write succeeded. */
-  if (sensor_status == HAL_OK)
-  {
-    sensor_status = HAL_I2C_Master_Receive(
-        &hi2c1,
-        (0x68 << 1),
-        &sensor_id,
-        1,
-        100);
-  }
-
-    /* Red indicates an I2C transaction failure. */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,
-      sensor_status != HAL_OK ? GPIO_PIN_SET : GPIO_PIN_RESET);
-
-  /* Green indicates the expected sensor identity. */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11,
-      sensor_status == HAL_OK && sensor_id == 0x68
-      ? GPIO_PIN_SET : GPIO_PIN_RESET);
+  /* Start the 50 Hz sensor/servo controller after generated peripheral setup. */
+  HapticApp_Init(&hi2c1, &htim3);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -167,6 +107,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    HapticApp_Poll();
   }
   /* USER CODE END 3 */
 }
