@@ -1,10 +1,11 @@
 # Flight Haptic Controller
 
-For the current staged workflow, start with the [Stage 2 environment and build
-guide](docs/stage-2/README.md). A clean build and user-reported Wokwi firmware
-execution are confirmed. Sensor initialization fails at the wake-register write;
-see the Stage 2 observation record. The application below predates this fresh
-staged workflow and is not a newly written minimal baseline.
+For the current staged workflow, start with the [Stage 3 peripheral checks
+guide](docs/stage-3/README.md). Stage 2's clean build and user-reported Wokwi
+execution are confirmed. Stage 3 adds signal-recording probes; its runtime checks
+are pending. Sensor initialization still fails at the wake-register write.
+The application below predates this fresh staged workflow and is not a newly
+written minimal baseline.
 
 STM32C031C6 firmware for the ENGE X200 Assignment 2 Wokwi circuit. The controller
 reads MPU6050 acceleration at 50 Hz, calculates roll, pitch and unified tilt, and

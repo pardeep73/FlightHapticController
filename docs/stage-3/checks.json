@@ -1,0 +1,156 @@
+{
+  "stage": 3,
+  "date": "2026-10-30",
+  "overall_status": "PREPARED_AWAITING_RUNTIME_OBSERVATIONS",
+  "scope": "Passive signal recording and peripheral checks using unchanged existing firmware; no controller implementation added.",
+  "base_commit": "65f8032a8d3beaea7cb3325752b29e2a8666f4d8",
+  "known_sensor_fault": {
+    "status": "FAIL",
+    "source": "../stage-2/wokwi-observation.txt",
+    "summary": "User-reported wake-register write timeout and failed GPIO recovery; not fixed by adding probes."
+  },
+  "references": {
+    "board": "https://raw.githubusercontent.com/wokwi/wokwi-boards/main/boards/st-nucleo-c031c6/board.json",
+    "analyzer": "https://raw.githubusercontent.com/wokwi/wokwi-docs/main/docs/parts/wokwi-logic-analyzer.md",
+    "vscode_config": "https://raw.githubusercontent.com/wokwi/wokwi-docs/main/docs/vscode/project-config.md",
+    "servo": "https://raw.githubusercontent.com/wokwi/wokwi-docs/main/docs/parts/wokwi-servo.md"
+  },
+  "firmware": {
+    "elf": {
+      "path": "build/FlightHapticController.elf",
+      "bytes": 1064784,
+      "sha256": "0a373985faf4ab97fc10d697a3060fe840fc763fe80ed71658e873dd8adfac34"
+    },
+    "hex": {
+      "path": "build/FlightHapticController.hex",
+      "bytes": 81429,
+      "sha256": "423a7cdf08bbf26308e241dc7d6ee9564586236b6037cfa5d467e24b005ad71a"
+    },
+    "bin": {
+      "path": "build/FlightHapticController.bin",
+      "bytes": 28924,
+      "sha256": "926607f1612a0ad50fb662cca7267ac1764a85c85e0faccad981581b80d56eb9"
+    }
+  },
+  "static_checks": [
+    {
+      "id": "S3-C01",
+      "name": "Original circuit preserved",
+      "status": "PASS",
+      "evidence": "Original 16 components and 27 connections retained; added one analyzer and nine observation wires."
+    },
+    {
+      "id": "S3-C02",
+      "name": "Analyzer channel and ground connections",
+      "status": "PASS",
+      "evidence": {
+        "ROLL_PWM": "PB4",
+        "PITCH_PWM": "PB5",
+        "TILT_PWM": "PB0.1",
+        "AUTO_LED": "PA2",
+        "MANUAL_LED": "PB11",
+        "BUTTON": "PA12",
+        "SCL": "PB8",
+        "SDA": "PB9"
+      }
+    },
+    {
+      "id": "S3-C03",
+      "name": "Wokwi recording configuration",
+      "status": "PASS",
+      "evidence": "TOML and diagram JSON parse; VCD filename configured; capture excluded from automatic Git tracking."
+    },
+    {
+      "id": "S3-C04",
+      "name": "PB0.1 board alias reference review",
+      "status": "PASS",
+      "evidence": "Official Wokwi board definition explicitly maps PB0.1 target to PB0. This is metadata verification, not measured output."
+    },
+    {
+      "id": "S3-C05",
+      "name": "Configured GPIO and timer inspection",
+      "status": "PASS",
+      "evidence": {
+        "configured_timer_clock_hz": 48000000,
+        "prescaler": 47,
+        "period_register": 19999,
+        "calculated_expected_pwm_hz": 50.0,
+        "calculated_expected_high_us": {
+          "roll": 1472,
+          "pitch": 1472,
+          "tilt": 544
+        },
+        "limit": "Calculated expectations; no timing measurement performed."
+      }
+    },
+    {
+      "id": "S3-C06",
+      "name": "Source and existing firmware preservation",
+      "status": "PASS",
+      "evidence": "No Core/Drivers/Makefile changes; ELF HEX BIN hashes match Stage 2."
+    },
+    {
+      "id": "S3-C07",
+      "name": "Runtime record integrity",
+      "status": "PASS",
+      "evidence": "Nine unique observation rows; eight NOT_RUN and one BLOCKED; no measured values filled."
+    }
+  ],
+  "runtime_checks": [
+    {
+      "case_id": "S3-R01",
+      "signal": "AUTO_LED",
+      "status": "NOT_RUN",
+      "notes": ""
+    },
+    {
+      "case_id": "S3-R02",
+      "signal": "MANUAL_LED",
+      "status": "NOT_RUN",
+      "notes": ""
+    },
+    {
+      "case_id": "S3-R03",
+      "signal": "BUTTON",
+      "status": "NOT_RUN",
+      "notes": "Raw signal only; software input sampling and debounce not established"
+    },
+    {
+      "case_id": "S3-R04",
+      "signal": "ROLL_PWM",
+      "status": "NOT_RUN",
+      "notes": "Measure several complete periods after startup"
+    },
+    {
+      "case_id": "S3-R05",
+      "signal": "PITCH_PWM",
+      "status": "NOT_RUN",
+      "notes": "Measure several complete periods after startup"
+    },
+    {
+      "case_id": "S3-R06",
+      "signal": "TILT_PWM",
+      "status": "NOT_RUN",
+      "notes": "PB0.1 alias maps to PB0; runtime pulse still unmeasured"
+    },
+    {
+      "case_id": "S3-R07",
+      "signal": "SERVO_VISUAL",
+      "status": "NOT_RUN",
+      "notes": "Visual calibration must be observed independently of calculated pulse width"
+    },
+    {
+      "case_id": "S3-R08",
+      "signal": "SERVO_TRAVEL_DIRECTION",
+      "status": "BLOCKED",
+      "notes": "Existing faulted firmware holds neutral; needs permitted independent test or valid sensor-driven commands"
+    },
+    {
+      "case_id": "S3-R09",
+      "signal": "SCL_SDA",
+      "status": "NOT_RUN",
+      "notes": "Supplementary observation only; known sensor initialization failure remains open"
+    }
+  ],
+  "completion_limit": "Runtime measurements are pending. Full servo movement and direction checks remain blocked by neutral outputs during the sensor fault."
+}

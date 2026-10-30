@@ -150,6 +150,16 @@
       "attrs": {
         "text": "TILT"
       }
+    },
+    {
+      "type": "wokwi-logic-analyzer",
+      "id": "stage3_analyzer",
+      "top": 430,
+      "left": 80,
+      "attrs": {
+        "channelNames": "ROLL_PWM,PITCH_PWM,TILT_PWM,AUTO_LED,MANUAL_LED,BUTTON,SCL,SDA",
+        "triggerMode": "off"
+      }
     }
   ],
   "connections": [
@@ -313,6 +323,60 @@
       "nucleo:PA9",
       "$serialMonitor:RX",
       "",
+      []
+    ],
+    [
+      "stage3_analyzer:D0",
+      "nucleo:PB4",
+      "gray",
+      []
+    ],
+    [
+      "stage3_analyzer:D1",
+      "nucleo:PB5",
+      "gray",
+      []
+    ],
+    [
+      "stage3_analyzer:D2",
+      "nucleo:PB0.1",
+      "gray",
+      []
+    ],
+    [
+      "stage3_analyzer:D3",
+      "nucleo:PA2",
+      "gray",
+      []
+    ],
+    [
+      "stage3_analyzer:D4",
+      "nucleo:PB11",
+      "gray",
+      []
+    ],
+    [
+      "stage3_analyzer:D5",
+      "nucleo:PA12",
+      "gray",
+      []
+    ],
+    [
+      "stage3_analyzer:D6",
+      "nucleo:PB8",
+      "gray",
+      []
+    ],
+    [
+      "stage3_analyzer:D7",
+      "nucleo:PB9",
+      "gray",
+      []
+    ],
+    [
+      "stage3_analyzer:GND",
+      "nucleo:GND.1",
+      "black",
       []
     ]
   ],

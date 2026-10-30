@@ -1,0 +1,10 @@
+case_id,requirement_ids,signal,expected_observation,measured_period_us,measured_high_us,observed_result,evidence_path,status,notes
+S3-R01,REQ-02;REQ-20,AUTO_LED,Existing firmware predicts low during initial manual state then high after sensor failure,,,,,NOT_RUN,
+S3-R02,REQ-02;REQ-20,MANUAL_LED,Existing firmware predicts high during initial manual state then low after sensor failure,,,,,NOT_RUN,
+S3-R03,REQ-02,BUTTON,Released low; held high; released low again; brief contact bounce may occur,,,,,NOT_RUN,Raw signal only; software input sampling and debounce not established
+S3-R04,REQ-02;REQ-03,ROLL_PWM,Source predicts period 20000us and steady high duration 1472us,,,,,NOT_RUN,Measure several complete periods after startup
+S3-R05,REQ-02;REQ-03,PITCH_PWM,Source predicts period 20000us and steady high duration 1472us,,,,,NOT_RUN,Measure several complete periods after startup
+S3-R06,REQ-02;REQ-03,TILT_PWM,Source predicts period 20000us and steady high duration 544us,,,,,NOT_RUN,PB0.1 alias maps to PB0; runtime pulse still unmeasured
+S3-R07,REQ-09,SERVO_VISUAL,Faulted firmware commands roll90 pitch90 tilt0; compare actual horn positions,,,,,NOT_RUN,Visual calibration must be observed independently of calculated pulse width
+S3-R08,REQ-02;REQ-12,SERVO_TRAVEL_DIRECTION,Observe each servo moving independently and verify direction relative to Figure1,,,,,BLOCKED,Existing faulted firmware holds neutral; needs permitted independent test or valid sensor-driven commands
+S3-R09,REQ-04,SCL_SDA,Preserve captured levels/transitions for diagnosis; no successful sensor result predicted,,,,,NOT_RUN,Supplementary observation only; known sensor initialization failure remains open
