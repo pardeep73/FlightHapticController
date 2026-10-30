@@ -610,6 +610,9 @@ bool HapticSoftI2C_Init(void)
   haptic_soft_i2c_status.lines_before = RawBusLines();
   haptic_soft_i2c_status.recover_result = SoftI2C_Recover(&bus);
   haptic_soft_i2c_status.lines_after = RawBusLines();
+  haptic_soft_i2c_status.gpio_odr = GPIOB->ODR;
+  haptic_soft_i2c_status.gpio_moder = GPIOB->MODER;
+  haptic_soft_i2c_status.gpio_pupdr = GPIOB->PUPDR;
   return haptic_soft_i2c_status.recover_result == SOFT_I2C_OK && !timing_fault;
 }
 
@@ -863,6 +866,8 @@ void HapticApp_Init(I2C_HandleTypeDef *i2c, TIM_HandleTypeDef *timer)
   servo_timer = timer;
   haptic_app_status = (HapticAppStatus){0};
   haptic_hw_i2c_status = (HapticHardwareI2CStatus){0};
+  /* Before the first transaction, observe whether the released bus is high. */
+  haptic_hw_i2c_status.boot_idr = GPIOB->IDR;
   hw_trace_active = false;
   Haptic_Init(&haptic_controller);
   /* A button held at boot must be released before it can generate an edge. */
@@ -1024,17 +1029,20 @@ static void AppendBusTrace(void)
   const size_t used = strlen(tx_buffer);
   (void)snprintf(tx_buffer + used, sizeof tx_buffer - used,
       "HW captured=%u err=%08lX flag=%08lX ISR=%08lX CR1=%08lX CR2=%08lX TIMINGR=%08lX\r\n"
-      "PINS IDR=%08lX MODER=%08lX OTYPER=%08lX PUPDR=%08lX AFRH=%08lX\r\n"
-      "SOFT recover=%u timing=%u lines=%u/%u\r\n"
+      "PINS IDR=%08lX BOOT=%08lX MODER=%08lX OTYPER=%08lX PUPDR=%08lX AFRH=%08lX\r\n"
+      "SOFT recover=%u timing=%u lines=%u/%u ODR=%08lX MODER=%08lX PUPDR=%08lX\r\n"
       "CLOCK CTRL=%08lX LOAD=%lu VAL=%lu/%lu cycles=%lu polls=%lu\r\n",
       (unsigned)h->captured, (unsigned long)h->error,
       (unsigned long)h->flag, (unsigned long)h->isr,
       (unsigned long)h->cr1, (unsigned long)h->cr2,
       (unsigned long)h->timingr, (unsigned long)h->gpio_idr,
+      (unsigned long)h->boot_idr,
       (unsigned long)h->moder, (unsigned long)h->otyper,
       (unsigned long)h->pupdr, (unsigned long)h->afr,
       (unsigned)s->recover_result, (unsigned)s->timing_fault,
       (unsigned)s->lines_before, (unsigned)s->lines_after,
+      (unsigned long)s->gpio_odr, (unsigned long)s->gpio_moder,
+      (unsigned long)s->gpio_pupdr,
       (unsigned long)s->systick_ctrl, (unsigned long)s->systick_load,
       (unsigned long)s->val_first, (unsigned long)s->val_last,
       (unsigned long)s->elapsed_cycles, (unsigned long)s->polls);

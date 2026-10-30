@@ -285,7 +285,7 @@ static void test_fault_trace_preserves_observations(void)
   haptic_hw_i2c_status = (HapticHardwareI2CStatus){
     .captured = true, .error = 0x20U, .flag = 0x40U, .isr = 0x8002U,
     .cr1 = 1U, .cr2 = 0x120D0U, .timingr = 0x10805D88U,
-    .gpio_idr = 0x300U, .moder = 0xA0000U, .otyper = 0x300U,
+    .gpio_idr = 0x300U, .boot_idr = 0x300U, .moder = 0xA0000U, .otyper = 0x300U,
     .pupdr = 0x50000U, .afr = 0x66U
   };
   haptic_soft_i2c_status = (HapticSoftI2CStatus){
@@ -293,7 +293,8 @@ static void test_fault_trace_preserves_observations(void)
     .systick_ctrl = 5U, .systick_load = 47999U,
     .val_first = 12345U, .val_last = 12345U,
     .elapsed_cycles = 0U, .polls = 4096U,
-    .lines_before = 3U, .lines_after = 3U
+    .lines_before = 3U, .lines_after = 3U,
+    .gpio_odr = 0x300U, .gpio_moder = 0x50000U, .gpio_pupdr = 0x50000U
   };
   tick = 1000U; CHECK(!poll());
   /* Queued observations must remain intact when the next recovery changes state. */
@@ -302,8 +303,8 @@ static void test_fault_trace_preserves_observations(void)
   drain_line();
   CHECK(strstr(captured, "mode=AUTO IMU=FAULT fault=I2C recovery failed") == captured);
   CHECK(strstr(captured, "HW captured=1 err=00000020 flag=00000040 ISR=00008002 CR1=00000001 CR2=000120D0 TIMINGR=10805D88\r\n") != NULL);
-  CHECK(strstr(captured, "PINS IDR=00000300 MODER=000A0000 OTYPER=00000300 PUPDR=00050000 AFRH=00000066\r\n") != NULL);
-  CHECK(strstr(captured, "SOFT recover=2 timing=3 lines=3/3\r\n") != NULL);
+  CHECK(strstr(captured, "PINS IDR=00000300 BOOT=00000300 MODER=000A0000 OTYPER=00000300 PUPDR=00050000 AFRH=00000066\r\n") != NULL);
+  CHECK(strstr(captured, "SOFT recover=2 timing=3 lines=3/3 ODR=00000300 MODER=00050000 PUPDR=00050000\r\n") != NULL);
   CHECK(strstr(captured, "CLOCK CTRL=00000005 LOAD=47999 VAL=12345/12345 cycles=0 polls=4096\r\n") != NULL);
   CHECK(captured_length > 160U && captured_length < 640U);
   ++cases;
@@ -338,7 +339,8 @@ static void test_fault_trace_maximum_numeric_fields_fit(void)
   haptic_hw_i2c_status = (HapticHardwareI2CStatus){
     .captured = true, .error = UINT32_MAX, .flag = UINT32_MAX, .isr = UINT32_MAX,
     .cr1 = UINT32_MAX, .cr2 = UINT32_MAX, .timingr = UINT32_MAX,
-    .gpio_idr = UINT32_MAX, .moder = UINT32_MAX, .otyper = UINT32_MAX,
+    .gpio_idr = UINT32_MAX, .boot_idr = UINT32_MAX,
+    .moder = UINT32_MAX, .otyper = UINT32_MAX,
     .pupdr = UINT32_MAX, .afr = UINT32_MAX
   };
   haptic_soft_i2c_status = (HapticSoftI2CStatus){
@@ -346,12 +348,14 @@ static void test_fault_trace_maximum_numeric_fields_fit(void)
     .systick_ctrl = UINT32_MAX, .systick_load = UINT32_MAX,
     .val_first = UINT32_MAX, .val_last = UINT32_MAX,
     .elapsed_cycles = UINT32_MAX, .polls = UINT32_MAX,
-    .lines_before = UINT8_MAX, .lines_after = UINT8_MAX
+    .lines_before = UINT8_MAX, .lines_after = UINT8_MAX,
+    .gpio_odr = UINT32_MAX, .gpio_moder = UINT32_MAX,
+    .gpio_pupdr = UINT32_MAX
   };
   tick = 1000U; CHECK(!poll());
   drain_line();
   CHECK(strstr(captured, "CLOCK CTRL=FFFFFFFF LOAD=4294967295 VAL=4294967295/4294967295 cycles=4294967295 polls=4294967295\r\n") != NULL);
-  CHECK(strstr(captured, "SOFT recover=4 timing=5 lines=255/255\r\n") != NULL);
+  CHECK(strstr(captured, "SOFT recover=4 timing=5 lines=255/255 ODR=FFFFFFFF MODER=FFFFFFFF PUPDR=FFFFFFFF\r\n") != NULL);
   CHECK(captured_length < 640U);
   ++cases;
 }

@@ -20,6 +20,7 @@ typedef struct
   volatile uint32_t MODER;
   volatile uint32_t OTYPER;
   volatile uint32_t PUPDR;
+  volatile uint32_t ODR;
   volatile uint32_t AFR[2];
 } GPIO_TypeDef;
 typedef enum { HAL_OK = 0, HAL_ERROR = 1, HAL_BUSY = 2, HAL_TIMEOUT = 3 } HAL_StatusTypeDef;

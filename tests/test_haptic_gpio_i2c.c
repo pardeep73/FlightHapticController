@@ -43,6 +43,9 @@ void HAL_GPIO_Init(GPIO_TypeDef *port, const GPIO_InitTypeDef *pins)
   CHECK(port == GPIOB);
   ++pin_initializations;
   configured_pin = *pins;
+  /* Match the tested pin mode and pull-up configuration in the GPIO register. */
+  port->MODER = 0x00050000U;
+  port->PUPDR = 0x00050000U;
 }
 
 void HAL_GPIO_WritePin(GPIO_TypeDef *port, uint16_t pins, GPIO_PinState state)
@@ -50,6 +53,8 @@ void HAL_GPIO_WritePin(GPIO_TypeDef *port, uint16_t pins, GPIO_PinState state)
   CHECK(port == GPIOB);
   CHECK(pins != 0 && (pins & ~(GPIO_PIN_8 | GPIO_PIN_9)) == 0);
   CHECK(++line_writes < 100000U);
+  if (state == GPIO_PIN_SET) port->ODR |= pins;
+  else port->ODR &= ~(uint32_t)pins;
   if ((pins & GPIO_PIN_8) != 0) scl_released = state == GPIO_PIN_SET;
   if ((pins & GPIO_PIN_9) != 0) sda_released = state == GPIO_PIN_SET;
 }
@@ -117,6 +122,9 @@ static void test_healthy_initialization(void)
   CHECK(haptic_soft_i2c_status.timing_fault == HAPTIC_TIMING_OK);
   CHECK(haptic_soft_i2c_status.lines_before == 3U);
   CHECK(haptic_soft_i2c_status.lines_after == 3U);
+  CHECK((haptic_soft_i2c_status.gpio_odr & 0x300U) == 0x300U);
+  CHECK((haptic_soft_i2c_status.gpio_moder & 0xF0000U) == 0x50000U);
+  CHECK((haptic_soft_i2c_status.gpio_pupdr & 0xF0000U) == 0x50000U);
   ++cases;
 }
 

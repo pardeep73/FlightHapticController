@@ -219,9 +219,10 @@ Mode and robustness checks:
 USART1/PA9 reports at 115200 baud. `IMU=OK` means the current acceleration sample
 was valid; `mode=AUTO` can remain latched and requires a fresh safe button press.
 `IMU=FAULT` blocks manual release. The latest supplied Wokwi log showed a hardware
-timeout followed by GPIO initialization failing before the identity read was
-retried. Its generic `0x00010000` application error does not establish a stuck
-physical bus.
+timeout waiting for an RXNE byte and GPIO initialization failing before the
+identity read was retried. The SysTick counter advanced while both raw I2C lines
+were low. The next trace adds boot pin levels and GPIO output/pull-up registers
+to determine when and why the lines go low.
 
 The current build adds measurement diagnostics to distinguish possible causes;
 it is not a verified Wokwi fix. Download the new project ZIP, extract it into a

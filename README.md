@@ -101,11 +101,13 @@ Open the **Wokwi Terminal** and read the status messages from USART1 on PA9.
 At level (`X=0, Y=0, Z=1`), `IMU=OK` with `mode=AUTO` requires a fresh blue-button
 press to restore manual. `IMU=FAULT` blocks manual release.
 
-The latest supplied log established a hardware timeout (`0x00000020`) followed
-by GPIO fallback initialization failing before the identity read was retried.
-The application error `0x00010000` covers multiple fallback failures; it does
-not establish that the physical bus is stuck. The expanded trace below is
-intended to distinguish pin levels, hardware wait flags and delay-clock faults.
+The latest supplied log shows that the hardware read reaches its RXNE wait, but
+no byte arrives. The SysTick counter advances, while GPIO recovery reads both
+SCL and SDA low. The application error `0x00010000` alone did not identify this;
+the measured pin levels now narrow the failure to the bus. The next trace also
+captures idle levels before the first transfer and the GPIO output/pull-up
+registers after recovery, to determine when the lines go low and whether the
+MCU released them.
 Host tests do not reproduce the actual Wokwi peripheral model.
 
 1. Download the new `downloads/FlightHapticController-project.zip` and extract it
@@ -122,8 +124,8 @@ software fields describe the latest recovery and delay observations.
 | --- | --- |
 | `mode=...` | Mode, IMU validity/fault, register, identity, HAL result, current `err`, selected `bus` and retained original `hwerr`. |
 | `HW` | `captured`, hardware error, last observed wait `flag`, and I2C `ISR`, `CR1`, `CR2`, `TIMINGR`. |
-| `PINS` | GPIOB `IDR`, `MODER`, `OTYPER`, `PUPDR`, `AFRH` captured at that hardware failure. |
-| `SOFT` | Recovery result, timing-fault code, and raw SCL/SDA levels before/after the latest recovery. |
+| `PINS` | GPIOB `IDR`, `MODER`, `OTYPER`, `PUPDR`, `AFRH` captured at that hardware failure; `BOOT` is `IDR` before the first transaction. |
+| `SOFT` | Recovery result, timing-fault code, raw SCL/SDA levels before/after the latest recovery, and GPIOB `ODR`, `MODER`, `PUPDR` afterward. |
 | `CLOCK` | SysTick `CTRL`, `LOAD`, first/last `VAL`, accumulated `cycles` and `polls` for the delay observation. |
 
 Numeric software codes are declared in `Core/Inc/main.h`:

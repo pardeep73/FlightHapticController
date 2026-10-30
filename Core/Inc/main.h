@@ -148,6 +148,9 @@ typedef struct
   uint32_t polls;
   uint8_t lines_before; /* bit 0 = raw SCL; bit 1 = raw SDA */
   uint8_t lines_after;
+  uint32_t gpio_odr;
+  uint32_t gpio_moder;
+  uint32_t gpio_pupdr;
 } HapticSoftI2CStatus;
 
 extern HapticSoftI2CStatus haptic_soft_i2c_status;
@@ -191,6 +194,7 @@ typedef struct
   uint32_t cr2;
   uint32_t timingr;
   uint32_t gpio_idr;
+  uint32_t boot_idr;
   uint32_t moder;
   uint32_t otyper;
   uint32_t pupdr;

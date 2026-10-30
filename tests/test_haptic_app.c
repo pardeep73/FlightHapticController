@@ -756,6 +756,7 @@ static void test_hardware_snapshot_precedes_fallback_deinit(void)
   CHECK(haptic_hw_i2c_status.cr2 == 0x000120D0U);
   CHECK(haptic_hw_i2c_status.timingr == 0x10805D88U);
   CHECK(haptic_hw_i2c_status.gpio_idr == 0x00000300U);
+  CHECK(haptic_hw_i2c_status.boot_idr == 0x00000300U);
   CHECK(haptic_hw_i2c_status.moder == 0x000A0000U);
   CHECK(haptic_hw_i2c_status.otyper == 0x00000300U);
   CHECK(haptic_hw_i2c_status.pupdr == 0x00050000U);
