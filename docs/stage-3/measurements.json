@@ -1,0 +1,494 @@
+{
+  "source_file": "stage-3-capture.vcd",
+  "sha256": "4fc220257f6084a2dbd743c4a5a8cbb8a6e1c85eb5c202560940fe018119d86d",
+  "byte_count": 163349,
+  "header_date": "Fri, 30 Oct 2026 18:32:17 GMT",
+  "timescale": "1ns",
+  "last_timestamp_s": 29.7442084,
+  "steady_pwm_selection": "Complete pulses/rising edges starting at or after 20ms; initial tilt transient recorded separately; unclosed final highs excluded.",
+  "signals": {
+    "ROLL_PWM": {
+      "initial_value": "0",
+      "last_value": "1",
+      "change_count_excluding_initial": 2973,
+      "rising_edges": 1487,
+      "falling_edges": 1486,
+      "redundant_assignments_ignored": 1,
+      "unknown_states": 0,
+      "complete_high_width_us": {
+        "count": 1486,
+        "min": 1471.975,
+        "median": 1472.0,
+        "max": 1472.025
+      },
+      "rising_period_us": {
+        "count": 1486,
+        "min": 19999.975,
+        "median": 20000.0,
+        "max": 20000.025
+      },
+      "steady_complete_high_width_us": {
+        "count": 1486,
+        "min": 1471.975,
+        "median": 1472.0,
+        "max": 1472.025
+      },
+      "steady_rising_period_us": {
+        "count": 1486,
+        "min": 19999.975,
+        "median": 20000.0,
+        "max": 20000.025
+      },
+      "first_change_s": 0.022797025,
+      "last_change_s": 29.742797025
+    },
+    "PITCH_PWM": {
+      "initial_value": "0",
+      "last_value": "1",
+      "change_count_excluding_initial": 2973,
+      "rising_edges": 1487,
+      "falling_edges": 1486,
+      "redundant_assignments_ignored": 0,
+      "unknown_states": 0,
+      "complete_high_width_us": {
+        "count": 1486,
+        "min": 1471.975,
+        "median": 1472.0,
+        "max": 1472.025
+      },
+      "rising_period_us": {
+        "count": 1486,
+        "min": 19999.975,
+        "median": 20000.0,
+        "max": 20000.025
+      },
+      "steady_complete_high_width_us": {
+        "count": 1486,
+        "min": 1471.975,
+        "median": 1472.0,
+        "max": 1472.025
+      },
+      "steady_rising_period_us": {
+        "count": 1486,
+        "min": 19999.975,
+        "median": 20000.0,
+        "max": 20000.025
+      },
+      "first_change_s": 0.022797025,
+      "last_change_s": 29.742797025
+    },
+    "TILT_PWM": {
+      "initial_value": "0",
+      "last_value": "0",
+      "change_count_excluding_initial": 2976,
+      "rising_edges": 1488,
+      "falling_edges": 1488,
+      "redundant_assignments_ignored": 0,
+      "unknown_states": 0,
+      "complete_high_width_us": {
+        "count": 1488,
+        "min": 543.975,
+        "median": 544.0,
+        "max": 1444.0
+      },
+      "rising_period_us": {
+        "count": 1487,
+        "min": 19944.0,
+        "median": 20000.0,
+        "max": 20000.025
+      },
+      "steady_complete_high_width_us": {
+        "count": 1487,
+        "min": 543.975,
+        "median": 544.0,
+        "max": 544.025
+      },
+      "steady_rising_period_us": {
+        "count": 1486,
+        "min": 19999.975,
+        "median": 20000.0,
+        "max": 20000.025
+      },
+      "first_change_s": 0.002853025,
+      "last_change_s": 29.743341025,
+      "startup_first_high_us": 1444.0,
+      "startup_first_high_start_s": 0.002853025
+    },
+    "AUTO_LED": {
+      "initial_value": "0",
+      "last_value": "1",
+      "change_count_excluding_initial": 1,
+      "rising_edges": 1,
+      "falling_edges": 0,
+      "redundant_assignments_ignored": 0,
+      "unknown_states": 0,
+      "complete_high_width_us": {
+        "count": 0
+      },
+      "rising_period_us": {
+        "count": 0
+      },
+      "steady_complete_high_width_us": {
+        "count": 0
+      },
+      "steady_rising_period_us": {
+        "count": 0
+      },
+      "first_change_s": 0.117409125,
+      "last_change_s": 0.117409125,
+      "changes_s": [
+        {
+          "time_s": 0.0,
+          "value": "0"
+        },
+        {
+          "time_s": 0.117409125,
+          "value": "1"
+        }
+      ]
+    },
+    "MANUAL_LED": {
+      "initial_value": "0",
+      "last_value": "0",
+      "change_count_excluding_initial": 2,
+      "rising_edges": 1,
+      "falling_edges": 1,
+      "redundant_assignments_ignored": 0,
+      "unknown_states": 0,
+      "complete_high_width_us": {
+        "count": 1,
+        "min": 114652.1,
+        "median": 114652.1,
+        "max": 114652.1
+      },
+      "rising_period_us": {
+        "count": 0
+      },
+      "steady_complete_high_width_us": {
+        "count": 0
+      },
+      "steady_rising_period_us": {
+        "count": 0
+      },
+      "first_change_s": 0.002765275,
+      "last_change_s": 0.117417375,
+      "changes_s": [
+        {
+          "time_s": 0.0,
+          "value": "0"
+        },
+        {
+          "time_s": 0.002765275,
+          "value": "1"
+        },
+        {
+          "time_s": 0.117417375,
+          "value": "0"
+        }
+      ]
+    },
+    "BUTTON": {
+      "initial_value": "0",
+      "last_value": "0",
+      "change_count_excluding_initial": 1276,
+      "rising_edges": 638,
+      "falling_edges": 638,
+      "redundant_assignments_ignored": 0,
+      "unknown_states": 0,
+      "complete_high_width_us": {
+        "count": 638,
+        "min": 0.125,
+        "median": 14.975000000000001,
+        "max": 264405.5
+      },
+      "rising_period_us": {
+        "count": 637,
+        "min": 1.225,
+        "median": 28.825,
+        "max": 5497396.9
+      },
+      "steady_complete_high_width_us": {
+        "count": 638,
+        "min": 0.125,
+        "median": 14.975000000000001,
+        "max": 264405.5
+      },
+      "steady_rising_period_us": {
+        "count": 637,
+        "min": 1.225,
+        "median": 28.825,
+        "max": 5497396.9
+      },
+      "first_change_s": 16.94501445,
+      "last_change_s": 23.613517675,
+      "stable_high_intervals_s": [
+        {
+          "start_s": 16.947131375,
+          "end_s": 17.17841785,
+          "duration_s": 0.231286475
+        },
+        {
+          "start_s": 22.679972625,
+          "end_s": 22.944378125,
+          "duration_s": 0.2644055
+        },
+        {
+          "start_s": 23.013174275,
+          "end_s": 23.177793275,
+          "duration_s": 0.164619
+        },
+        {
+          "start_s": 23.2465054,
+          "end_s": 23.39438045,
+          "duration_s": 0.14787505
+        },
+        {
+          "start_s": 23.463140725,
+          "end_s": 23.61110795,
+          "duration_s": 0.147967225
+        }
+      ]
+    },
+    "SCL": {
+      "initial_value": "1",
+      "last_value": "1",
+      "change_count_excluding_initial": 152,
+      "rising_edges": 76,
+      "falling_edges": 76,
+      "redundant_assignments_ignored": 0,
+      "unknown_states": 0,
+      "complete_high_width_us": {
+        "count": 75,
+        "min": 5.0,
+        "median": 5.0,
+        "max": 83.525
+      },
+      "rising_period_us": {
+        "count": 75,
+        "min": 10.0,
+        "median": 10.0,
+        "max": 6240.375
+      },
+      "steady_complete_high_width_us": {
+        "count": 75,
+        "min": 5.0,
+        "median": 5.0,
+        "max": 83.525
+      },
+      "steady_rising_period_us": {
+        "count": 75,
+        "min": 10.0,
+        "median": 10.0,
+        "max": 6240.375
+      },
+      "first_change_s": 0.10309445,
+      "last_change_s": 0.115338425
+    },
+    "SDA": {
+      "initial_value": "1",
+      "last_value": "1",
+      "change_count_excluding_initial": 64,
+      "rising_edges": 32,
+      "falling_edges": 32,
+      "redundant_assignments_ignored": 0,
+      "unknown_states": 0,
+      "complete_high_width_us": {
+        "count": 31,
+        "min": 0.0,
+        "median": 10.0,
+        "max": 6245.375
+      },
+      "rising_period_us": {
+        "count": 31,
+        "min": 10.0,
+        "median": 30.0,
+        "max": 6250.375
+      },
+      "steady_complete_high_width_us": {
+        "count": 31,
+        "min": 0.0,
+        "median": 10.0,
+        "max": 6245.375
+      },
+      "steady_rising_period_us": {
+        "count": 31,
+        "min": 10.0,
+        "median": 30.0,
+        "max": 6250.375
+      },
+      "first_change_s": 0.10308945,
+      "last_change_s": 0.110212125
+    }
+  },
+  "bus_transactions": [
+    {
+      "start_s": 0.10308945,
+      "bytes": [
+        {
+          "hex": "0xD0",
+          "ack": true,
+          "ack_sample_s": 0.10317945
+        },
+        {
+          "hex": "0x75",
+          "ack": true,
+          "ack_sample_s": 0.10327895
+        }
+      ],
+      "end_s": 0.109529325,
+      "ending": "new_start_without_observed_stop",
+      "unframed_trailing_clock_samples": [
+        1
+      ]
+    },
+    {
+      "start_s": 0.109529325,
+      "bytes": [
+        {
+          "hex": "0xD0",
+          "ack": true,
+          "ack_sample_s": 0.109619325
+        },
+        {
+          "hex": "0x75",
+          "ack": true,
+          "ack_sample_s": 0.109709325
+        }
+      ],
+      "end_s": 0.109724325,
+      "ending": "stop",
+      "unframed_trailing_clock_samples": [
+        0
+      ]
+    },
+    {
+      "start_s": 0.1097586,
+      "bytes": [
+        {
+          "hex": "0xD1",
+          "ack": true,
+          "ack_sample_s": 0.1098486
+        },
+        {
+          "hex": "0x68",
+          "ack": false,
+          "ack_sample_s": 0.1099386
+        }
+      ],
+      "end_s": 0.1099536,
+      "ending": "stop",
+      "unframed_trailing_clock_samples": [
+        0
+      ]
+    },
+    {
+      "start_s": 0.110027125,
+      "bytes": [
+        {
+          "hex": "0xD0",
+          "ack": true,
+          "ack_sample_s": 0.110117125
+        },
+        {
+          "hex": "0x6B",
+          "ack": true,
+          "ack_sample_s": 0.110207125
+        }
+      ],
+      "end_s": null,
+      "ending": "no_stop_before_capture_end",
+      "unframed_trailing_clock_samples": [
+        1
+      ]
+    }
+  ],
+  "bus_decode_method": "Group SCL/SDA updates by timestamp; detect SDA start/stop transitions while SCL remains high; sample data on SCL rising edges; group eight bits plus ACK.",
+  "button_bounce_episodes": [
+    {
+      "start_s": 16.94501445,
+      "end_s": 16.947131375,
+      "duration_ms": 2.116925,
+      "final_value": "1",
+      "transition_count": 171
+    },
+    {
+      "start_s": 17.17841785,
+      "end_s": 17.18053765,
+      "duration_ms": 2.1198,
+      "final_value": "0",
+      "transition_count": 143
+    },
+    {
+      "start_s": 22.677905825,
+      "end_s": 22.679972625,
+      "duration_ms": 2.0668,
+      "final_value": "1",
+      "transition_count": 73
+    },
+    {
+      "start_s": 22.944378125,
+      "end_s": 22.9467912,
+      "duration_ms": 2.413075,
+      "final_value": "0",
+      "transition_count": 137
+    },
+    {
+      "start_s": 23.0110521,
+      "end_s": 23.013174275,
+      "duration_ms": 2.122175,
+      "final_value": "1",
+      "transition_count": 197
+    },
+    {
+      "start_s": 23.177793275,
+      "end_s": 23.180429775,
+      "duration_ms": 2.6365,
+      "final_value": "0",
+      "transition_count": 37
+    },
+    {
+      "start_s": 23.244461525,
+      "end_s": 23.2465054,
+      "duration_ms": 2.043875,
+      "final_value": "1",
+      "transition_count": 147
+    },
+    {
+      "start_s": 23.39438045,
+      "end_s": 23.3966403,
+      "duration_ms": 2.25985,
+      "final_value": "0",
+      "transition_count": 167
+    },
+    {
+      "start_s": 23.4610702,
+      "end_s": 23.463140725,
+      "duration_ms": 2.070525,
+      "final_value": "1",
+      "transition_count": 167
+    },
+    {
+      "start_s": 23.61110795,
+      "end_s": 23.613517675,
+      "duration_ms": 2.409725,
+      "final_value": "0",
+      "transition_count": 37
+    }
+  ],
+  "led_both_high_overlap_us": 8.25,
+  "post_startup_bus_observation": {
+    "both_high_from_s": 0.115338425,
+    "last_recorded_timestamp_s": 29.7442084,
+    "duration_at_least_s": 29.628869975
+  },
+  "capture_local_time": "2026-10-31 00:02:17 Asia/Calcutta (converted from VCD header)",
+  "provenance": "User-supplied Wokwi VCD analyzed locally; the agent did not run Wokwi or independently verify the executing firmware hash.",
+  "evidence_path": "docs/stage-3/evidence/capture.vcd",
+  "visual_observations": {
+    "source": "Two screenshots supplied in the user chat on 31 October 2026; screenshots are not archived as local files.",
+    "observed": "Autopilot indicator lit, manual indicator dark; roll/pitch horns approximately horizontal and tilt approximately vertical, consistent with the expected neutral orientations.",
+    "exact_servo_angles_verified": false,
+    "limit": "Screenshot scale does not independently establish exact angles or full-range calibration."
+  },
+  "bus_decode_limit": "Trailing unframed clock samples can include STOP setup or line release and are not interpreted as completed payload bytes. Exact HAL wait flag is not present in the VCD."
+}

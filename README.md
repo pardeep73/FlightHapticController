@@ -2,8 +2,9 @@
 
 For the current staged workflow, start with the [Stage 3 peripheral checks
 guide](docs/stage-3/README.md). Stage 2's clean build and user-reported Wokwi
-execution are confirmed. Stage 3 adds signal-recording probes; its runtime checks
-are pending. Sensor initialization still fails at the wake-register write.
+execution are confirmed. Stage 3 measurements verify steady PWM, LED outputs and
+raw button signals. Exact servo calibration and movement/direction remain open.
+Sensor initialization still fails at the wake-register write.
 The application below predates this fresh staged workflow and is not a newly
 written minimal baseline.
 

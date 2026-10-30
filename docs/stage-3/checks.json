@@ -1,7 +1,7 @@
 {
   "stage": 3,
   "date": "2026-10-30",
-  "overall_status": "PREPARED_AWAITING_RUNTIME_OBSERVATIONS",
+  "overall_status": "PARTIALLY_VERIFIED_WITH_SENSOR_DEPENDENT_CHECKS_BLOCKED",
   "scope": "Passive signal recording and peripheral checks using unchanged existing firmware; no controller implementation added.",
   "base_commit": "65f8032a8d3beaea7cb3325752b29e2a8666f4d8",
   "known_sensor_fault": {
@@ -80,7 +80,7 @@
           "pitch": 1472,
           "tilt": 544
         },
-        "limit": "Calculated expectations; no timing measurement performed."
+        "limit": "These are calculated source expectations; actual VCD measurements are recorded separately in measurements.json."
       }
     },
     {
@@ -93,64 +93,90 @@
       "id": "S3-C07",
       "name": "Runtime record integrity",
       "status": "PASS",
-      "evidence": "Nine unique observation rows; eight NOT_RUN and one BLOCKED; no measured values filled."
+      "evidence": "Nine unique runtime records now linked to user evidence; six PASS, one PARTIAL, one BLOCKED, one diagnostic RECORDED. Exact visual calibration and servo motion are not marked PASS."
     }
   ],
   "runtime_checks": [
     {
       "case_id": "S3-R01",
       "signal": "AUTO_LED",
-      "status": "NOT_RUN",
-      "notes": ""
+      "status": "PASS",
+      "observed_result": "AUTO_LED low initially; high from 117.409125ms through capture end",
+      "notes": "Output overlaps MANUAL_LED high for 8.25us during transition; subsequent steady AUTO indication verified"
     },
     {
       "case_id": "S3-R02",
       "signal": "MANUAL_LED",
-      "status": "NOT_RUN",
-      "notes": ""
+      "status": "PASS",
+      "observed_result": "MANUAL_LED high at 2.765275ms; low from 117.417375ms through capture end",
+      "notes": "Initial manual output and subsequent off state observed; 8.25us both-high overlap retained"
     },
     {
       "case_id": "S3-R03",
       "signal": "BUTTON",
-      "status": "NOT_RUN",
-      "notes": "Raw signal only; software input sampling and debounce not established"
+      "status": "PASS",
+      "observed_result": "Five press/release pairs; stable high holds 147.87505ms to 264.4055ms; final state low",
+      "notes": "Raw signal only; 10 bounce episodes 2.043875ms to 2.6365ms; software sampling/debounce not verified"
     },
     {
       "case_id": "S3-R04",
       "signal": "ROLL_PWM",
-      "status": "NOT_RUN",
-      "notes": "Measure several complete periods after startup"
+      "status": "PASS",
+      "observed_result": "Steady median frequency 50Hz; period range 19999.975 to 20000.025us; high range 1471.975 to 1472.025us",
+      "notes": "1486 complete high pulses measured; incomplete final high excluded; no exact angle calibration inferred"
     },
     {
       "case_id": "S3-R05",
       "signal": "PITCH_PWM",
-      "status": "NOT_RUN",
-      "notes": "Measure several complete periods after startup"
+      "status": "PASS",
+      "observed_result": "Steady median frequency 50Hz; period range 19999.975 to 20000.025us; high range 1471.975 to 1472.025us",
+      "notes": "1486 complete high pulses measured; incomplete final high excluded; no exact angle calibration inferred"
     },
     {
       "case_id": "S3-R06",
       "signal": "TILT_PWM",
-      "status": "NOT_RUN",
-      "notes": "PB0.1 alias maps to PB0; runtime pulse still unmeasured"
+      "status": "PASS",
+      "observed_result": "Steady median frequency 50Hz; period range 19999.975 to 20000.025us; high range 543.975 to 544.025us",
+      "notes": "1487 complete steady high pulses; first startup high was 1444us and is retained separately; no exact angle calibration inferred"
     },
     {
       "case_id": "S3-R07",
       "signal": "SERVO_VISUAL",
-      "status": "NOT_RUN",
-      "notes": "Visual calibration must be observed independently of calculated pulse width"
+      "status": "PARTIAL",
+      "observed_result": "Screenshots visually consistent with neutral orientations; exact angles not established",
+      "notes": "User chat screenshots; coarse visual agreement only, exact pulse-to-angle calibration pending"
     },
     {
       "case_id": "S3-R08",
       "signal": "SERVO_TRAVEL_DIRECTION",
       "status": "BLOCKED",
-      "notes": "Existing faulted firmware holds neutral; needs permitted independent test or valid sensor-driven commands"
+      "observed_result": "",
+      "notes": "Still fixed at fault-neutral outputs; independent motion and direction not demonstrated"
     },
     {
       "case_id": "S3-R09",
       "signal": "SCL_SDA",
-      "status": "NOT_RUN",
-      "notes": "Supplementary observation only; known sensor initialization failure remains open"
+      "status": "RECORDED",
+      "observed_result": "Decoded identity read 0x68; wake write address and register0x6B ACKed but no complete value byte; bus high after115.338425ms",
+      "notes": "Diagnostic capture only; sensor initialization remains FAIL; GPIO lines0/0 is not proof of externally stuck-low lines"
     }
   ],
-  "completion_limit": "Runtime measurements are pending. Full servo movement and direction checks remain blocked by neutral outputs during the sensor fault."
+  "completion_limit": "Steady PWM, LED output states and raw button signals verified. Exact servo-angle calibration is partial; motion/direction remain blocked; sensor wake write still fails.",
+  "last_review_date": "2026-10-31",
+  "observation": {
+    "source": "USER_SUPPLIED_WOKWI_VCD_AND_CHAT_SCREENSHOTS",
+    "capture_path": "docs/stage-3/evidence/capture.vcd",
+    "capture_sha256": "4fc220257f6084a2dbd743c4a5a8cbb8a6e1c85eb5c202560940fe018119d86d",
+    "measurements_path": "docs/stage-3/measurements.json",
+    "duration_s": 29.7442084,
+    "timescale": "1ns",
+    "capture_local_time": "2026-10-31 00:02:17 Asia/Calcutta (converted from VCD header)"
+  },
+  "runtime_summary": {
+    "PASS": 6,
+    "PARTIAL": 1,
+    "BLOCKED": 1,
+    "RECORDED": 1
+  },
+  "sensor_diagnostic_update": "VCD shows D0 ACK,6B ACK but no complete payload byte; both bus lines subsequently remain high. The precise HAL wait flag still requires a write-specific snapshot before fallback."
 }
