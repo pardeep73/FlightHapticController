@@ -2,4 +2,5 @@
 version = 1
 firmware = 'build/FlightHapticController.elf'
 elf = 'build/FlightHapticController.elf'
-vcdFile = 'stage-3-capture.vcd'
+vcdFile = 'stage-4-capture.vcd'
+gdbServerPort = 3333

@@ -1,3 +1,5 @@
 # Rebuildable artifacts from the portable Linux/VS Code build.
 /build/
 /stage-3-capture.vcd
+/stage-4-capture.vcd
+/stage-4-write.txt

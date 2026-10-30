@@ -5,18 +5,59 @@
       "label": "Build STM32 firmware",
       "type": "shell",
       "command": "make",
-      "args": ["-j4", "all"],
-      "options": { "cwd": "${workspaceFolder}" },
-      "group": { "kind": "build", "isDefault": true },
-      "problemMatcher": ["$gcc"]
+      "args": [
+        "-j4",
+        "all"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
     },
     {
       "label": "Test haptic controller",
       "type": "shell",
       "command": "make test",
-      "options": { "cwd": "${workspaceFolder}" },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "group": "test",
-      "problemMatcher": ["$gcc"]
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "Capture Stage 4 wake write",
+      "type": "process",
+      "command": "${input:armGdbExecutable}",
+      "args": [
+        "--quiet",
+        "--nx",
+        "--command=${workspaceFolder}/docs/stage-4/capture-write.gdb",
+        "${workspaceFolder}/build/FlightHapticController.elf"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "armGdbExecutable",
+      "type": "promptString",
+      "description": "ARM-capable GDB executable name or full path (for example arm-none-eabi-gdb.exe).",
+      "default": "arm-none-eabi-gdb"
     }
   ]
 }

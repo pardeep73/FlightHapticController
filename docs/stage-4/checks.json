@@ -1,0 +1,118 @@
+{
+  "stage": 4,
+  "date": "2026-10-31",
+  "overall_status": "DIAGNOSTIC_PREPARED_AWAITING_USER_CAPTURE",
+  "scope": "Debugger configuration and diagnostic capture commands using unchanged existing application firmware; no write workaround or controller implementation added.",
+  "base_commit": "09fec04abe19a5c25ef58380d4f646bcca2b11a4",
+  "user_toolchain_reported_installed": true,
+  "user_gdb_executable_independently_verified": false,
+  "cloud_offline_validation_gdb_version": "16.3",
+  "firmware": {
+    "elf": {
+      "path": "build/FlightHapticController.elf",
+      "bytes": 1064784,
+      "sha256": "0a373985faf4ab97fc10d697a3060fe840fc763fe80ed71658e873dd8adfac34"
+    },
+    "hex": {
+      "path": "build/FlightHapticController.hex",
+      "bytes": 81429,
+      "sha256": "423a7cdf08bbf26308e241dc7d6ee9564586236b6037cfa5d467e24b005ad71a"
+    },
+    "bin": {
+      "path": "build/FlightHapticController.bin",
+      "bytes": 28924,
+      "sha256": "926607f1612a0ad50fb662cca7267ac1764a85c85e0faccad981581b80d56eb9"
+    }
+  },
+  "known_evidence": {
+    "source": "../stage-3/evidence/capture.vcd",
+    "summary": "D0ACK and6BACK observed with no complete wake-value byte; precise failed HAL wait is not recorded."
+  },
+  "static_checks": [
+    {
+      "id": "S4-C01",
+      "name": "Firmware and application preservation",
+      "status": "PASS",
+      "evidence": "All three image hashes match Stage 2/3; no Core, Drivers or Makefile changes."
+    },
+    {
+      "id": "S4-C02",
+      "name": "Breakpoint location and current-error source",
+      "status": "PASS",
+      "evidence": "ELF retains EndHardwareTrace at0x08002b34; Sensor_Write stores HAL return before calling it and reaches fallback afterwards. sensor_i2c->ErrorCode is read instead of stale haptic_app_status.i2c_error."
+    },
+    {
+      "id": "S4-C03",
+      "name": "Required debug symbols",
+      "status": "PASS",
+      "evidence": "EndHardwareTrace, hw_trace_flag/isr/cr2, haptic_app_status and sensor_i2c retain debug symbols."
+    },
+    {
+      "id": "S4-C04",
+      "name": "Offline GDB command definitions and expressions",
+      "status": "PASS",
+      "evidence": "GDB16.3 accepted breakpoint/actions and type-checked 18 printed field expressions; exit0/no stderr. Remote and continue disabled in temporary validation copy; actions not executed."
+    },
+    {
+      "id": "S4-C05",
+      "name": "Wokwi and VS Code configuration syntax",
+      "status": "PASS",
+      "evidence": "TOML/JSON parse; debugger port3333; process task has explicit ELF/script and GDB executable prompt. Live connection not tested."
+    },
+    {
+      "id": "S4-C06",
+      "name": "Capture provenance and file separation",
+      "status": "PASS",
+      "evidence": "Offline transcript clearly labelled; no stage-4-write.txt fabricated in repository. User capture and optional VCD have separate ignored paths."
+    }
+  ],
+  "runtime_checks": [
+    {
+      "id": "S4-R01",
+      "name": "User GDB executable and Wokwi connection",
+      "status": "NOT_RUN",
+      "note": "User confirms toolchain installed; actual GDB path/version and live connection await user run."
+    },
+    {
+      "id": "S4-R02",
+      "name": "Capture first wake-write result before fallback",
+      "status": "NOT_RUN",
+      "note": "No target values captured by offline validation."
+    },
+    {
+      "id": "S4-R03",
+      "name": "Confirm exact failed wait phase",
+      "status": "NOT_RUN",
+      "note": "TCR versus following TXIS remains unconfirmed."
+    },
+    {
+      "id": "S4-R04",
+      "name": "Successful wake and range configuration",
+      "status": "BLOCKED",
+      "note": "Prior user evidence shows wake write fails; no fix applied."
+    },
+    {
+      "id": "S4-R05",
+      "name": "Real acceleration reads respond to changed inputs",
+      "status": "BLOCKED",
+      "note": "Requires successful initialization; identity read alone is insufficient."
+    },
+    {
+      "id": "S4-R06",
+      "name": "Repeated sensor-read reliability and cadence",
+      "status": "BLOCKED",
+      "note": "Requires real successful measurement transfers."
+    }
+  ],
+  "limitations": [
+    "No live Wokwi debugger connection tested by agent.",
+    "Offline command definitions and field types were checked; target values/actions were not executed.",
+    "Current firmware still has the observed sensor wake failure.",
+    "Exact servo calibration and movement/direction checks remain open.",
+    "Pausing may affect execution timing; actual capture must be interpreted as observed."
+  ],
+  "references": [
+    "https://raw.githubusercontent.com/wokwi/wokwi-docs/main/docs/vscode/debugging.md",
+    "https://raw.githubusercontent.com/wokwi/wokwi-docs/main/docs/vscode/project-config.md"
+  ]
+}

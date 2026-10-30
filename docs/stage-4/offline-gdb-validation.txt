@@ -1,0 +1,62 @@
+OFFLINE GDB COMMAND-FILE VALIDATION
+Original script: /workspace/FlightHapticController/docs/stage-4/capture-write.gdb
+Temporary cwd: /tmp/stage4-gdb-offline-0iwdfay8
+Disabled source lines: 17,32
+No remote target connected and no target memory read/written.
+
+OFFLINE VALIDATION ONLY: remote connection and continue disabled; no target values captured.
+Connecting to the local Wokwi debugger. A fresh paused startup is required.
+Breakpoint 1 at 0x8002b34: file Core/Src/main.c, line 703.
+The wake-write breakpoint was not reached. This is not a completed capture.
+Num     Type           Disp Enb Address    What
+1       breakpoint     keep y   0x08002b34 in EndHardwareTrace at Core/Src/main.c:703
+	stop only if haptic_app_status.register_address == 0x6b
+        silent
+        set $stage4_hit = 1
+        printf "STAGE4 op=WRITE reg=0x%02x HAL=%u err=0x%08x\n", (unsigned int)haptic_app_status.register_address, (unsigned int)haptic_app_status.hal_status, (unsigned int)sensor_i2c->ErrorCode
+        printf "TRACE flag=0x%08x ISR=0x%08x CR2=0x%08x\n", (unsigned int)hw_trace_flag, (unsigned int)hw_trace_isr, (unsigned int)hw_trace_cr2
+        printf "LIVE ISR=0x%08x CR1=0x%08x CR2=0x%08x TIMINGR=0x%08x\n", (unsigned int)sensor_i2c->Instance->ISR, (unsigned int)sensor_i2c->Instance->CR1, (unsigned int)sensor_i2c->Instance->CR2, (unsigned int)sensor_i2c->Instance->TIMINGR
+        printf "XFER remaining=%u size=%u state=0x%08x mode=0x%08x\n", (unsigned int)sensor_i2c->XferCount, (unsigned int)sensor_i2c->XferSize, (unsigned int)sensor_i2c->State, (unsigned int)sensor_i2c->Mode
+        printf "CONTEXT who=0x%02x split=%u serr=0x%08x software_bus=%u\n", (unsigned int)haptic_app_status.identity, (unsigned int)haptic_app_status.split_read_stage, (unsigned int)haptic_app_status.split_read_error, (unsigned int)haptic_app_status.software_i2c
+        bt 5
+type = uint8_t
+type = unsigned int
+type = HAL_StatusTypeDef
+type = unsigned int
+type = volatile uint32_t
+type = unsigned int
+type = uint32_t
+type = unsigned int
+type = uint32_t
+type = unsigned int
+type = uint32_t
+type = unsigned int
+type = volatile uint32_t
+type = unsigned int
+type = volatile uint32_t
+type = unsigned int
+type = volatile uint32_t
+type = unsigned int
+type = volatile uint32_t
+type = unsigned int
+type = volatile uint16_t
+type = unsigned int
+type = uint16_t
+type = unsigned int
+type = volatile HAL_I2C_StateTypeDef
+type = unsigned int
+type = volatile HAL_I2C_ModeTypeDef
+type = unsigned int
+type = uint8_t
+type = unsigned int
+type = uint8_t
+type = unsigned int
+type = uint32_t
+type = unsigned int
+type = _Bool
+type = unsigned int
+The target architecture is set to "auto" (currently "armv6s-m").
+
+STDERR:
+
+Exit code: 0
