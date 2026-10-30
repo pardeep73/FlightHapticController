@@ -1,8 +1,8 @@
 {
   "stage": 2,
   "date": "2026-10-30",
-  "overall_status": "INCOMPLETE_AWAITING_SIMULATOR_OBSERVATION",
-  "scope": "Build existing application and inspect development configuration; no new application implementation or functional validation.",
+  "overall_status": "COMPLETE_WITH_OPEN_SENSOR_DEFECT",
+  "scope": "Build existing application, inspect development configuration and record user-reported execution/initialization observations; no new application implementation or full-controller functional validation.",
   "application_source_commit": "b3f04c368c3ddc9ddf84623c1c559001a1fab670",
   "configuration_changes": [
     ".vscode/tasks.json",
@@ -120,16 +120,35 @@
     {
       "id": "S2-10",
       "name": "Observed Wokwi firmware execution",
-      "status": "BLOCKED",
-      "reason": "No Wokwi CLI or VS Code executable, and no configured WOKWI_CLI_TOKEN in this cloud executor. User-side simulation evidence is required."
+      "status": "PASS",
+      "evidence": "User supplied repeated Wokwi firmware diagnostic records; see wokwi-observation.txt. This confirms execution, not successful sensor initialization.",
+      "evidence_source": "USER_REPORTED"
+    },
+    {
+      "id": "S2-11",
+      "name": "Sensor initialization observation",
+      "status": "FAIL",
+      "required_for_stage2_execution_gate": false,
+      "evidence": "Initial record: sensor wake write failed; who=0x68 reg=0x6B bus=GPIO hwerr=0x20 split=4 serr=0. Later records: I2C recovery failed.",
+      "diagnostic_limit": "First-failure HW snapshot belongs to the earlier read timeout. Current write wait flag and original write HAL return are not preserved in the displayed record.",
+      "follow_up": "Peripheral/sensor verification; capture wake-write state before fallback before selecting a code change."
     }
   ],
   "limitations": [
     "Existing application is a full controller, not a minimal newly written Stage 2 application.",
-    "No feature or sensor behaviour verified by these build checks.",
+    "Sensor initialization fails at the wake write; acceleration measurements and actuator/FSM operation remain unverified.",
+    "Wokwi execution evidence is user-supplied; exact running firmware hash was not independently checked.",
+    "VS Code build-task execution remains NOT_RUN; the equivalent clean terminal build passed.",
     "Static RAM allocation does not measure runtime stack growth.",
     "Tilt diagram pin PB0.1 needs simulator pin-model validation in the peripheral stage.",
     "Identity labels remain placeholders.",
     "Course AI restrictions and missing rubric remain as recorded in Stage 1."
-  ]
+  ],
+  "observation": {
+    "date": "2026-10-30",
+    "source": "USER_SUPPLIED_WOKWI_TERMINAL_TEXT",
+    "path": "docs/stage-2/wokwi-observation.txt",
+    "exact_running_firmware_hash_independently_verified": false,
+    "summary": "Firmware execution confirmed; identity read returned 0x68 through the separate-read path, then wake-register write and GPIO recovery failed."
+  }
 }

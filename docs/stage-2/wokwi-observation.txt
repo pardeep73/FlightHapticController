@@ -1,0 +1,15 @@
+Evidence source: Wokwi terminal text pasted by the user on 30 October 2026.
+This excerpt preserves the first two complete records from that message.
+Later repeated recovery-failure records and the final incomplete record are omitted.
+The agent did not independently run Wokwi or verify the running ELF's hash.
+
+mode=AUTO IMU=FAULT fault=sensor wake write failed who=0x68 reg=0x6B HAL=1 err=0x00010000 bus=GPIO hwerr=0x00000020
+HW captured=1 err=00000020 flag=00000004 ISR=00008043 CR1=00000001 CR2=020120D0 TIMINGR=10005D88
+PINS IDR=00000800 BOOT=00000000 MODER=EB7AFAFE OTYPER=00000300 PUPDR=24000000 AFRH=00000066
+SOFT recover=2 timing=0 lines=0/0 ODR=00000B00 MODER=EB75FAFE PUPDR=24050000 split=4 serr=00000000
+CLOCK CTRL=00000007 LOAD=47999 VAL=47675/46643 cycles=1032 polls=1
+mode=AUTO IMU=FAULT fault=I2C recovery failed who=0x68 reg=0x6B HAL=1 err=0x00010000 bus=GPIO hwerr=0x00000020
+HW captured=1 err=00000020 flag=00000004 ISR=00008043 CR1=00000001 CR2=020120D0 TIMINGR=10005D88
+PINS IDR=00000800 BOOT=00000000 MODER=EB7AFAFE OTYPER=00000300 PUPDR=24000000 AFRH=00000066
+SOFT recover=2 timing=0 lines=0/0 ODR=00000300 MODER=EB75FAFE PUPDR=24050000 split=4 serr=00000000
+CLOCK CTRL=00000007 LOAD=47999 VAL=383/47123 cycles=1260 polls=1

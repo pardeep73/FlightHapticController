@@ -1,6 +1,8 @@
 # Stage 2 — development environment and clean build
 
-Status: clean build verified; actual Wokwi execution remains pending.
+Status: clean build passed; user-supplied Wokwi output confirms firmware execution.
+Sensor initialization fails and remains an open defect for the peripheral/sensor
+verification stages. Stage 2 execution success does not establish sensor success.
 
 This stage checks the build environment and simulator configuration. The repository
 already contained a full controller before this fresh staged workflow. This stage
@@ -18,6 +20,8 @@ and packaging do not establish that the application is permitted for submission.
 - `.vscode/extensions.json`: recommends the Wokwi extension; it does not install it.
 - `docs/stage-2/build.log`: actual output of the first clean build.
 - `docs/stage-2/checks.json`: recorded build/configuration checks and firmware hashes.
+- `docs/stage-2/wokwi-observation.txt`: first two complete user-supplied terminal
+  records, with their provenance and excerpt limits.
 - `downloads/assignment-stage-2.zip`: project sources, configuration, these records
   and freshly compiled `build/FlightHapticController.elf`, `.hex` and `.bin`.
 
@@ -53,6 +57,33 @@ The existing tilt wire uses the diagram label `PB0.1`. Configuration parsing doe
 not establish that this label maps correctly in the simulator; verify the board
 pin model and actual output during the peripheral stage before declaring that
 connection correct. No wiring was changed on the basis of that assumption.
+
+## User-reported Wokwi observation, 30 October 2026
+
+The user supplied repeated firmware diagnostic records from Wokwi. This proves
+the application reached its reporting/recovery loop. The running image's hash and
+execution through the VS Code build task were not independently checked.
+
+| Observation | Supported conclusion |
+| --- | --- |
+| Repeated firmware-generated terminal records | Firmware execution confirmed by user-supplied evidence. |
+| First record has `who=0x68`, `split=4`, `serr=00000000` | Identity read succeeded through the separate pointer-write/read path, and initialization advanced beyond identity checking. |
+| First record reports `sensor wake write failed`, register `0x6B` | Initialization next failed while writing the power-management register. |
+| `bus=GPIO`, `hwerr=0x00000020`, failed recovery | The hardware wake write timed out and GPIO fallback initialization subsequently failed. |
+| Later records report `I2C recovery failed` | Recovery remains unsuccessful; retained identity/split fields do not prove a new read on every retry. |
+
+The hardware trace is deliberately first-failure-only: `EndHardwareTrace` does
+not replace an already captured snapshot. Therefore the displayed `HW flag=4`,
+`ISR=00008043` and `CR2=020120D0` describe the earlier hardware read timeout, not
+the later wake-write failure. The final displayed HAL/error values have also
+been replaced by the GPIO recovery result. They do not identify the original
+write's exact HAL return or awaited flag.
+
+The exact cause of the wake-write timeout is unconfirmed. The next useful
+diagnostic is a separate snapshot for the write to `0x6B`, captured before
+fallback, including the original HAL return/error, awaited flag, ISR and CR2.
+The low GPIO input readings alone do not establish a physical wiring fault.
+No sensor code was changed based on an unmeasured hypothesis.
 
 ## Open and run the included image in VS Code
 
@@ -116,17 +147,19 @@ The existing `scripts/setup-toolchain.sh` is for the documented Debian cloud
 environment, not a Windows installer. The old checked-in `Debug` files are not
 used by the portable Makefile.
 
-## Checks still requiring observation
+## Remaining verification
 
 The cloud executor has no Wokwi CLI or VS Code executable, and no configured
 `WOKWI_CLI_TOKEN`. Only the presence of the token was checked; no credentials were
-read or disclosed. Therefore Wokwi startup and execution are unverified here.
+read or disclosed. The agent cannot run Wokwi here; the execution result above
+comes from the user's supplied terminal text.
 
 The Stage 1 verification CSV remains a frozen planning baseline. Stage 2 results
-are recorded separately in `checks.json`; the combined Stage 1 V-001 scenario
-cannot be marked PASS until actual simulator execution is observed.
+are recorded separately in `checks.json`. The clean build and user-supplied
+execution evidence now support the Stage 2 execution gate; the historical Stage 1
+CSV has not been rewritten to imply later functionality was verified.
 
-Stage 2 is complete only when both the clean build and observed Wokwi execution
-are supported by evidence. Peripheral behaviour, sensor validity, angle maths,
-FSM behaviour and assignment compliance require their later planned checks.
+Stage 2's build/execution gate is complete, with an open sensor defect.
+Peripheral behaviour, acceleration validity, angle maths, FSM behaviour and
+assignment compliance require their later planned checks.
 Student identity labels remain placeholders and must be filled before submission.
