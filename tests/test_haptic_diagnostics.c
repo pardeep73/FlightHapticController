@@ -304,7 +304,7 @@ static void test_fault_trace_preserves_observations(void)
   CHECK(strstr(captured, "mode=AUTO IMU=FAULT fault=I2C recovery failed") == captured);
   CHECK(strstr(captured, "HW captured=1 err=00000020 flag=00000040 ISR=00008002 CR1=00000001 CR2=000120D0 TIMINGR=10805D88\r\n") != NULL);
   CHECK(strstr(captured, "PINS IDR=00000300 BOOT=00000300 MODER=000A0000 OTYPER=00000300 PUPDR=00050000 AFRH=00000066\r\n") != NULL);
-  CHECK(strstr(captured, "SOFT recover=2 timing=3 lines=3/3 ODR=00000300 MODER=00050000 PUPDR=00050000\r\n") != NULL);
+  CHECK(strstr(captured, "SOFT recover=2 timing=3 lines=3/3 ODR=00000300 MODER=00050000 PUPDR=00050000 split=0 serr=00000000\r\n") != NULL);
   CHECK(strstr(captured, "CLOCK CTRL=00000005 LOAD=47999 VAL=12345/12345 cycles=0 polls=4096\r\n") != NULL);
   CHECK(captured_length > 160U && captured_length < 640U);
   ++cases;
@@ -355,7 +355,7 @@ static void test_fault_trace_maximum_numeric_fields_fit(void)
   tick = 1000U; CHECK(!poll());
   drain_line();
   CHECK(strstr(captured, "CLOCK CTRL=FFFFFFFF LOAD=4294967295 VAL=4294967295/4294967295 cycles=4294967295 polls=4294967295\r\n") != NULL);
-  CHECK(strstr(captured, "SOFT recover=4 timing=5 lines=255/255 ODR=FFFFFFFF MODER=FFFFFFFF PUPDR=FFFFFFFF\r\n") != NULL);
+  CHECK(strstr(captured, "SOFT recover=4 timing=5 lines=255/255 ODR=FFFFFFFF MODER=FFFFFFFF PUPDR=FFFFFFFF split=0 serr=00000000\r\n") != NULL);
   CHECK(captured_length < 640U);
   ++cases;
 }

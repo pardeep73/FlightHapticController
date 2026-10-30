@@ -664,6 +664,7 @@ static GPIO_PinState button_candidate;
 static GPIO_PinState button_stable;
 static bool sensor_ready;
 static bool pending_press;
+static bool split_read_selected;
 
 static bool hw_trace_active;
 static uint32_t hw_trace_flag;
@@ -750,6 +751,45 @@ static bool StartSoftwareFallback(void)
 }
 
 /*
+ * The connected simulator completed the WHO_AM_I pointer write but left CR2
+ * in write direction while HAL waited for RXNE. Try a STOP between the pointer
+ * and the read only for that measured failure. Both HAL calls still require a
+ * real sensor ACK and data byte. Record which step fails if it does not work.
+ */
+static bool Sensor_ReadWithStop(uint8_t reg, uint8_t *data, uint16_t length,
+                                bool reset_bus)
+{
+  haptic_app_status.split_read_stage = 1U;
+  if (reset_bus)
+  {
+    haptic_app_status.hal_status = HAL_I2C_DeInit(sensor_i2c);
+    if (haptic_app_status.hal_status == HAL_OK)
+    {
+      haptic_app_status.hal_status = HAL_I2C_Init(sensor_i2c);
+    }
+    if (haptic_app_status.hal_status != HAL_OK) goto failed;
+  }
+  haptic_app_status.split_read_stage = 2U;
+  haptic_app_status.hal_status = HAL_I2C_Master_Transmit(sensor_i2c,
+      MPU_ADDRESS, &reg, 1U, I2C_TIMEOUT_MS);
+  if (haptic_app_status.hal_status != HAL_OK) goto failed;
+  haptic_app_status.split_read_stage = 3U;
+  haptic_app_status.hal_status = HAL_I2C_Master_Receive(sensor_i2c,
+      MPU_ADDRESS, data, length, I2C_TIMEOUT_MS);
+  if (haptic_app_status.hal_status != HAL_OK) goto failed;
+  haptic_app_status.split_read_stage = 4U;
+  haptic_app_status.split_read_error = 0U;
+  haptic_app_status.i2c_error = 0U;
+  split_read_selected = true;
+  return true;
+
+failed:
+  haptic_app_status.split_read_error = HAL_I2C_GetError(sensor_i2c);
+  haptic_app_status.i2c_error = haptic_app_status.split_read_error;
+  return false;
+}
+
+/*
  * Read a device register with a repeated START. The memory API issues START
  * before writing TXDR, avoiding the newer generic master API's preload path.
  */
@@ -760,10 +800,31 @@ static bool Sensor_Read(uint8_t reg, uint8_t *data, uint16_t length)
   {
     return SoftwareResult(HapticSoftI2C_Read(reg, data, length));
   }
+  if (split_read_selected)
+  {
+    if (Sensor_ReadWithStop(reg, data, length, false)) return true;
+    split_read_selected = false;
+    if (StartSoftwareFallback())
+    {
+      return SoftwareResult(HapticSoftI2C_Read(reg, data, length));
+    }
+    return false;
+  }
   BeginHardwareTrace();
   haptic_app_status.hal_status = HAL_I2C_Mem_Read(sensor_i2c, MPU_ADDRESS,
       reg, I2C_MEMADD_SIZE_8BIT, data, length, I2C_TIMEOUT_MS);
   EndHardwareTrace();
+  if (haptic_app_status.hal_status != HAL_OK
+      && haptic_app_status.i2c_error == I2C_ERROR_TIMEOUT
+      && hw_trace_flag == I2C_FLAG_RXNE
+      && (hw_trace_isr & I2C_FLAG_TC) != 0U
+      && (hw_trace_cr2 & I2C_CR2_RD_WRN) == 0U)
+  {
+    haptic_app_status.hardware_error = haptic_app_status.i2c_error;
+    if (Sensor_ReadWithStop(reg, data, length, true)) return true;
+    /* Retain the original timeout for the existing GPIO recovery decision. */
+    haptic_app_status.i2c_error = I2C_ERROR_TIMEOUT;
+  }
   if (haptic_app_status.hal_status != HAL_OK && StartSoftwareFallback())
   {
     return SoftwareResult(HapticSoftI2C_Read(reg, data, length));
@@ -865,6 +926,7 @@ void HapticApp_Init(I2C_HandleTypeDef *i2c, TIM_HandleTypeDef *timer)
   sensor_i2c = i2c;
   servo_timer = timer;
   haptic_app_status = (HapticAppStatus){0};
+  split_read_selected = false;
   haptic_hw_i2c_status = (HapticHardwareI2CStatus){0};
   /* Before the first transaction, observe whether the released bus is high. */
   haptic_hw_i2c_status.boot_idr = GPIOB->IDR;
@@ -1030,7 +1092,7 @@ static void AppendBusTrace(void)
   (void)snprintf(tx_buffer + used, sizeof tx_buffer - used,
       "HW captured=%u err=%08lX flag=%08lX ISR=%08lX CR1=%08lX CR2=%08lX TIMINGR=%08lX\r\n"
       "PINS IDR=%08lX BOOT=%08lX MODER=%08lX OTYPER=%08lX PUPDR=%08lX AFRH=%08lX\r\n"
-      "SOFT recover=%u timing=%u lines=%u/%u ODR=%08lX MODER=%08lX PUPDR=%08lX\r\n"
+      "SOFT recover=%u timing=%u lines=%u/%u ODR=%08lX MODER=%08lX PUPDR=%08lX split=%u serr=%08lX\r\n"
       "CLOCK CTRL=%08lX LOAD=%lu VAL=%lu/%lu cycles=%lu polls=%lu\r\n",
       (unsigned)h->captured, (unsigned long)h->error,
       (unsigned long)h->flag, (unsigned long)h->isr,
@@ -1043,6 +1105,8 @@ static void AppendBusTrace(void)
       (unsigned)s->lines_before, (unsigned)s->lines_after,
       (unsigned long)s->gpio_odr, (unsigned long)s->gpio_moder,
       (unsigned long)s->gpio_pupdr,
+      (unsigned)haptic_app_status.split_read_stage,
+      (unsigned long)haptic_app_status.split_read_error,
       (unsigned long)s->systick_ctrl, (unsigned long)s->systick_load,
       (unsigned long)s->val_first, (unsigned long)s->val_last,
       (unsigned long)s->elapsed_cycles, (unsigned long)s->polls);

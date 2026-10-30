@@ -54,6 +54,10 @@ static uint32_t wake_tick;
 static bool trace_flag_checks;
 static uint32_t trace_last_flag;
 static bool deinit_clears_registers;
+static unsigned split_tx_count;
+static unsigned split_rx_count;
+static bool split_receive_fails;
+static uint8_t split_pointer;
 
 /* Encode signed raw counts into the MPU6050's high-byte-first wire format. */
 static void acceleration(int x, int y, int z)
@@ -82,7 +86,8 @@ HAL_StatusTypeDef HAL_I2C_Mem_Read(I2C_HandleTypeDef *handle,
     {
       i2c_registers.ISR = 0x00008003U;
       CHECK(HapticTraceI2CFlag(handle, 0x02U) == 1U);
-      i2c_registers.ISR = 0x00008002U;
+      i2c_registers.ISR = trace_last_flag == 0x04U
+          ? 0x00008043U : 0x00008002U;
       CHECK(HapticTraceI2CFlag(handle, trace_last_flag) == 0U);
     }
     last_error = read_error_code; /* Inject an actual HAL error bitmask. */
@@ -128,6 +133,45 @@ HAL_StatusTypeDef HAL_I2C_Mem_Write(I2C_HandleTypeDef *handle,
   {
     sleeping = (*data & 0x40U) != 0;
     wake_tick = tick;
+  }
+  return HAL_OK;
+}
+
+HAL_StatusTypeDef HAL_I2C_Master_Transmit(I2C_HandleTypeDef *handle,
+    uint16_t address, uint8_t *data, uint16_t length, uint32_t timeout)
+{
+  CHECK(handle == &i2c && address == (0x68U << 1));
+  CHECK(length == 1U && timeout == 5U && data != NULL);
+  split_pointer = *data;
+  ++split_tx_count;
+  last_error = 0U;
+  return HAL_OK;
+}
+
+HAL_StatusTypeDef HAL_I2C_Master_Receive(I2C_HandleTypeDef *handle,
+    uint16_t address, uint8_t *data, uint16_t length, uint32_t timeout)
+{
+  CHECK(handle == &i2c && address == (0x68U << 1) && timeout == 5U);
+  CHECK(data != NULL);
+  ++split_rx_count;
+  if (split_receive_fails)
+  {
+    last_error = 0x20U;
+    return HAL_ERROR;
+  }
+  last_error = 0U;
+  if (split_pointer == 0x75U)
+  {
+    CHECK(length == 1U);
+    *data = identity;
+  }
+  else
+  {
+    CHECK(split_pointer == 0x3BU && length == sizeof sample_bytes);
+    if (sleeping || (uint32_t)(tick - wake_tick) < 100U)
+      memset(data, 0, length);
+    else
+      memcpy(data, sample_bytes, length);
   }
   return HAL_OK;
 }
@@ -267,6 +311,9 @@ static void reset(GPIO_PinState initial_button)
   trace_flag_checks = false;
   trace_last_flag = 0x40U;
   deinit_clears_registers = false;
+  split_tx_count = split_rx_count = 0U;
+  split_receive_fails = false;
+  split_pointer = 0U;
   acceleration(0, 0, 16384);
 }
 
@@ -794,6 +841,53 @@ static void test_hardware_snapshot_is_first_failure_and_init_resets(void)
   ++cases;
 }
 
+/* The real log reached TC but timed out waiting for RXNE with RD_WRN clear. */
+static void test_separate_stop_read_after_measured_rxne_failure(void)
+{
+  reset(GPIO_PIN_RESET);
+  fail_read_register = 0x75U;
+  read_error_code = 0x20U;
+  trace_flag_checks = true;
+  trace_last_flag = 0x04U;
+  i2c_registers.CR2 = 0x020120D0U;
+  HapticApp_Init(&i2c, &timer);
+  CHECK(haptic_hw_i2c_status.captured);
+  CHECK(haptic_hw_i2c_status.flag == 0x04U);
+  CHECK(haptic_hw_i2c_status.isr == 0x00008043U);
+  CHECK(haptic_app_status.split_read_stage == 4U);
+  CHECK(haptic_app_status.split_read_error == 0U);
+  CHECK(haptic_app_status.hardware_error == 0x20U);
+  CHECK(!haptic_app_status.software_i2c);
+  CHECK(split_tx_count == 1U && split_rx_count == 1U);
+  CHECK(haptic_app_status.identity == 0x68U);
+  CHECK(haptic_app_status.fault == HAPTIC_SENSOR_NONE);
+  after(20U);
+  CHECK(haptic_controller.sensor_valid);
+  CHECK(split_tx_count == 2U && split_rx_count == 2U);
+  CHECK(haptic_app_status.register_address == 0x3BU);
+  ++cases;
+}
+
+static void test_separate_stop_read_failure_keeps_fault_observable(void)
+{
+  reset(GPIO_PIN_RESET);
+  fail_read_register = 0x75U;
+  read_error_code = 0x20U;
+  trace_flag_checks = true;
+  trace_last_flag = 0x04U;
+  i2c_registers.CR2 = 0x020120D0U;
+  split_receive_fails = true;
+  HapticApp_Init(&i2c, &timer);
+  CHECK(haptic_app_status.split_read_stage == 3U);
+  CHECK(haptic_app_status.split_read_error == 0x20U);
+  CHECK(split_tx_count == 1U && split_rx_count == 1U);
+  CHECK(haptic_app_status.software_i2c);
+  CHECK(soft_init_count == 1U);
+  CHECK(haptic_app_status.fault == HAPTIC_SENSOR_WHO_READ);
+  CHECK(haptic_hw_i2c_status.flag == 0x04U);
+  ++cases;
+}
+
 int main(void)
 {
   test_initialization_and_wake();
@@ -820,6 +914,8 @@ int main(void)
   test_write_timeout_can_switch_to_software_bus();
   test_hardware_snapshot_precedes_fallback_deinit();
   test_hardware_snapshot_is_first_failure_and_init_resets();
+  test_separate_stop_read_after_measured_rxne_failure();
+  test_separate_stop_read_failure_keeps_fault_observable();
   printf("PASS: %u adapter cases, %u checks (register I2C, wake, PWM, debounce, recovery, diagnostics)\n",
          cases, checks);
   return EXIT_SUCCESS;

@@ -30,6 +30,9 @@ OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(C_SOURCES)) \
 
 # Observe the actual HAL wait flag without modifying the vendor driver source.
 $(BUILD_DIR)/Drivers/STM32C0xx_HAL_Driver/Src/stm32c0xx_hal_i2c.o: CPPFLAGS += -DHAPTIC_I2C_TRACE -include Core/Inc/main.h
+# These two translation units carry the controller and the two I2C read paths.
+# Size-optimizing them leaves room for diagnostic output in 32 KB of flash.
+$(BUILD_DIR)/Core/Src/main.o $(BUILD_DIR)/Drivers/STM32C0xx_HAL_Driver/Src/stm32c0xx_hal_i2c.o: CFLAGS += -Os
 
 .PHONY: all clean test
 all: $(TARGET).elf $(TARGET).hex $(TARGET).bin

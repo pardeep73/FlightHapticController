@@ -218,11 +218,13 @@ Mode and robustness checks:
 
 USART1/PA9 reports at 115200 baud. `IMU=OK` means the current acceleration sample
 was valid; `mode=AUTO` can remain latched and requires a fresh safe button press.
-`IMU=FAULT` blocks manual release. The latest supplied Wokwi log showed a hardware
-timeout waiting for an RXNE byte and GPIO initialization failing before the
-identity read was retried. The SysTick counter advanced while both raw I2C lines
-were low. The next trace adds boot pin levels and GPIO output/pull-up registers
-to determine when and why the lines go low.
+`IMU=FAULT` blocks manual release. The connected Wokwi log showed a hardware
+timeout waiting for an RXNE byte after the address write completed, with read
+direction absent from I2C `CR2`. With the sensor signal wires removed, the
+write phase failed instead. Both runs reported low GPIO input levels, so those
+readings alone cannot identify an electrically stuck sensor. The current build
+tries a STOP between the pointer write and read for exactly this measured
+failure; the terminal reports its `split` stage and `serr` error if it fails.
 
 The current build adds measurement diagnostics to distinguish possible causes;
 it is not a verified Wokwi fix. Download the new project ZIP, extract it into a
@@ -236,8 +238,8 @@ Interpret the recovery result together with its delay-clock fault code.
 
 The HAL register-memory path and GPIO fallback both require real sensor data.
 Host tests cover controller and simulated bus behavior, not the Wokwi peripheral
-model. Only the UART diagnostic section is size-optimized to fit the added trace
-in 32 KB; bus and control code retain `-O0`.
+model. The current application and HAL I2C units use `-Os` to fit both read paths
+and the trace in 32 KB.
 
 Build and host-side controller checks can validate compilation, angle equations,
 FSM transitions, and command values. They do not establish that Wokwi rendered

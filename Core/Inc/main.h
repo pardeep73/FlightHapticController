@@ -181,6 +181,8 @@ typedef struct
   HapticSensorFault fault;
   bool software_i2c;
   uint32_t hardware_error;
+  uint8_t split_read_stage; /* 0=unused, 1=reset, 2=pointer, 3=data, 4=success */
+  uint32_t split_read_error;
 } HapticAppStatus;
 
 /* First hardware failure, frozen before fallback can reset I2C or its pins. */

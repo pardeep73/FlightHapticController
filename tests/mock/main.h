@@ -33,6 +33,9 @@ extern GPIO_TypeDef mock_gpio_b;
 #define GPIO_PIN_11 (1U << 11)
 #define GPIO_PIN_12 (1U << 12)
 #define I2C_MEMADD_SIZE_8BIT 1U
+#define I2C_FLAG_RXNE 0x04U
+#define I2C_FLAG_TC 0x40U
+#define I2C_CR2_RD_WRN 0x400U
 #define TIM_CHANNEL_1 0U
 #define TIM_CHANNEL_2 4U
 #define TIM_CHANNEL_3 8U
@@ -44,6 +47,10 @@ HAL_StatusTypeDef HAL_I2C_Mem_Read(I2C_HandleTypeDef *, uint16_t, uint16_t,
     uint16_t, uint8_t *, uint16_t, uint32_t);
 HAL_StatusTypeDef HAL_I2C_Mem_Write(I2C_HandleTypeDef *, uint16_t, uint16_t,
     uint16_t, uint8_t *, uint16_t, uint32_t);
+HAL_StatusTypeDef HAL_I2C_Master_Transmit(I2C_HandleTypeDef *, uint16_t,
+    uint8_t *, uint16_t, uint32_t);
+HAL_StatusTypeDef HAL_I2C_Master_Receive(I2C_HandleTypeDef *, uint16_t,
+    uint8_t *, uint16_t, uint32_t);
 uint32_t HAL_I2C_GetError(I2C_HandleTypeDef *);
 HAL_StatusTypeDef HAL_I2C_DeInit(I2C_HandleTypeDef *);
 HAL_StatusTypeDef HAL_I2C_Init(I2C_HandleTypeDef *);

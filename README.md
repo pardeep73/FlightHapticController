@@ -77,8 +77,8 @@ require different calibration.
   demonstration vectors.
 
 Host tests select sections of the same `main.c` implementation. The Makefile
-keeps bus and control code at `-O0`; only the UART diagnostic section uses `-Os`
-to fit the expanded trace within the MCU's 32 KB flash.
+size-optimizes `main.c` and the HAL I2C driver to keep both measured read paths
+and the fault trace within the MCU's 32 KB flash.
 
 Exact 50 degree axis magnitudes enter clamping and exact 20 degree tilt enters
 compliance, resolving equality gaps in the brief. Autopilot changes the mode
@@ -101,13 +101,22 @@ Open the **Wokwi Terminal** and read the status messages from USART1 on PA9.
 At level (`X=0, Y=0, Z=1`), `IMU=OK` with `mode=AUTO` requires a fresh blue-button
 press to restore manual. `IMU=FAULT` blocks manual release.
 
-The latest supplied log shows that the hardware read reaches its RXNE wait, but
-no byte arrives. The SysTick counter advances, while GPIO recovery reads both
-SCL and SDA low. The application error `0x00010000` alone did not identify this;
-the measured pin levels now narrow the failure to the bus. The next trace also
-captures idle levels before the first transfer and the GPIO output/pull-up
-registers after recovery, to determine when the lines go low and whether the
-MCU released them.
+The connected log reaches the RXNE wait after the register-address write, but
+no byte arrives; its I2C `CR2` register still shows write direction. With the
+sensor's SCL/SDA wires removed, the controller instead fails during the initial
+write. This demonstrates that the sensor connection changes the hardware result,
+while GPIO input reads report low in both circuits. The low GPIO readings alone
+do not establish that the sensor physically holds either line down.
+
+For exactly the measured RXNE timeout with TC set and read direction absent,
+the current firmware resets I2C and tries a register-pointer write with STOP,
+followed by a new read START. It selects this path only if it receives a real
+sensor byte; writes still use the normal memory API. If it fails, the existing
+GPIO fallback remains available. In a fault record, `SOFT split` identifies the
+last attempted step: `0` unused, `1` I2C reset, `2` pointer write, `3` data read,
+`4` success. `serr` is that step's HAL error. A healthy `IMU=OK` record with
+`bus=HW hwerr=0x00000020` would show the alternative path recovered the sensor.
+This has not yet been observed in Wokwi.
 
 For a controlled comparison, `downloads/FlightHapticController-isolated-bus-test.zip`
 contains the same compiled firmware with only the MPU6050's SCL and SDA wires
@@ -135,7 +144,7 @@ software fields describe the latest recovery and delay observations.
 | `mode=...` | Mode, IMU validity/fault, register, identity, HAL result, current `err`, selected `bus` and retained original `hwerr`. |
 | `HW` | `captured`, hardware error, last observed wait `flag`, and I2C `ISR`, `CR1`, `CR2`, `TIMINGR`. |
 | `PINS` | GPIOB `IDR`, `MODER`, `OTYPER`, `PUPDR`, `AFRH` captured at that hardware failure; `BOOT` is `IDR` before the first transaction. |
-| `SOFT` | Recovery result, timing-fault code, raw SCL/SDA levels before/after the latest recovery, and GPIOB `ODR`, `MODER`, `PUPDR` afterward. |
+| `SOFT` | Recovery result, timing-fault code, raw SCL/SDA levels before/after the latest recovery, GPIOB `ODR`, `MODER`, `PUPDR` afterward, and the separate-STOP read's `split` step and `serr` error. |
 | `CLOCK` | SysTick `CTRL`, `LOAD`, first/last `VAL`, accumulated `cycles` and `polls` for the delay observation. |
 
 Numeric software codes are declared in `Core/Inc/main.h`:
