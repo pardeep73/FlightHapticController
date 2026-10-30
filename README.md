@@ -1,5 +1,10 @@
 # Flight Haptic Controller
 
+For the current staged workflow, start with the [Stage 2 environment and build
+guide](docs/stage-2/README.md). A clean build of the existing application has been
+verified; Wokwi execution remains pending. The application below predates this
+fresh staged workflow and is not a newly written minimal baseline.
+
 STM32C031C6 firmware for the ENGE X200 Assignment 2 Wokwi circuit. The controller
 reads MPU6050 acceleration at 50 Hz, calculates roll, pitch and unified tilt, and
 drives the three servos through finite state machines with 5 degree inward

@@ -1,0 +1,135 @@
+{
+  "stage": 2,
+  "date": "2026-10-30",
+  "overall_status": "INCOMPLETE_AWAITING_SIMULATOR_OBSERVATION",
+  "scope": "Build existing application and inspect development configuration; no new application implementation or functional validation.",
+  "application_source_commit": "b3f04c368c3ddc9ddf84623c1c559001a1fab670",
+  "configuration_changes": [
+    ".vscode/tasks.json",
+    ".vscode/extensions.json"
+  ],
+  "build_command": "make -j4 all",
+  "compiler": "arm-none-eabi-gcc (15:14.2.rel1-1) 14.2.1 20241119",
+  "make": "GNU Make 4.4.1",
+  "compiler_error_count": 0,
+  "vendor_warning_count": 3,
+  "vendor_warnings": [
+    "Drivers/STM32C0xx_HAL_Driver/Src/stm32c0xx_hal_flash_ex.c:456:50: warning: unused parameter 'Bank' [-Wunused-parameter]",
+    "Drivers/STM32C0xx_HAL_Driver/Src/stm32c0xx_hal_pwr.c:252:38: warning: unused parameter 'Regulator' [-Wunused-parameter]",
+    "Drivers/STM32C0xx_HAL_Driver/Src/stm32c0xx_hal_pwr.c:300:37: warning: unused parameter 'Regulator' [-Wunused-parameter]"
+  ],
+  "memory": {
+    "ram": {
+      "allocated_bytes": 3032,
+      "limit_bytes": 12288
+    },
+    "flash": {
+      "allocated_bytes": 28924,
+      "limit_bytes": 32768
+    }
+  },
+  "firmware": {
+    "elf": {
+      "path": "build/FlightHapticController.elf",
+      "bytes": 1064784,
+      "sha256": "0a373985faf4ab97fc10d697a3060fe840fc763fe80ed71658e873dd8adfac34"
+    },
+    "hex": {
+      "path": "build/FlightHapticController.hex",
+      "bytes": 81429,
+      "sha256": "423a7cdf08bbf26308e241dc7d6ee9564586236b6037cfa5d467e24b005ad71a"
+    },
+    "bin": {
+      "path": "build/FlightHapticController.bin",
+      "bytes": 28924,
+      "sha256": "926607f1612a0ad50fb662cca7267ac1764a85c85e0faccad981581b80d56eb9"
+    }
+  },
+  "checks": [
+    {
+      "id": "S2-01",
+      "name": "Prepared compiler and make execute",
+      "status": "PASS",
+      "evidence": [
+        "arm-none-eabi-gcc (15:14.2.rel1-1) 14.2.1 20241119",
+        "GNU Make 4.4.1"
+      ]
+    },
+    {
+      "id": "S2-02",
+      "name": "Clean source build with no reused object files",
+      "status": "PASS",
+      "evidence": "Fresh temporary project, no build directory initially; make -j4 all exited 0. See build.log."
+    },
+    {
+      "id": "S2-03",
+      "name": "ELF HEX and BIN produced",
+      "status": "PASS",
+      "evidence": "All three files exist and are nonempty."
+    },
+    {
+      "id": "S2-04",
+      "name": "Linker allocation within configured limits",
+      "status": "PASS",
+      "evidence": {
+        "ram": {
+          "allocated_bytes": 3032,
+          "limit_bytes": 12288
+        },
+        "flash": {
+          "allocated_bytes": 28924,
+          "limit_bytes": 32768
+        }
+      }
+    },
+    {
+      "id": "S2-05",
+      "name": "ARM ELF header and startup-vector consistency",
+      "status": "PASS",
+      "evidence": {
+        "architecture": "v6S-M / Thumb-1",
+        "initial_stack_pointer": "0x20003000",
+        "reset_vector": "0x8006ae5",
+        "entry_point": "0x8006ae5"
+      }
+    },
+    {
+      "id": "S2-06",
+      "name": "VS Code task and extension recommendation JSON",
+      "status": "PASS",
+      "evidence": "Valid JSON; default task make -j4 all; Wokwi extension recommended. No editor execution implied."
+    },
+    {
+      "id": "S2-07",
+      "name": "Wokwi configuration syntax and declared circuit structure",
+      "status": "PASS",
+      "evidence": "Valid TOML/JSON; correct board identifier, 16 unique component IDs and known endpoint components. Tilt uses the PB0.1 diagram label; actual pin-model mapping and electrical behaviour remain unverified."
+    },
+    {
+      "id": "S2-08",
+      "name": "Application and vendor source preservation",
+      "status": "PASS",
+      "evidence": "90 C/header/startup files match the snapshot; no Core or Drivers changes."
+    },
+    {
+      "id": "S2-09",
+      "name": "Observed VS Code task execution",
+      "status": "NOT_RUN",
+      "reason": "VS Code executable is not installed in the cloud executor; equivalent terminal build was run."
+    },
+    {
+      "id": "S2-10",
+      "name": "Observed Wokwi firmware execution",
+      "status": "BLOCKED",
+      "reason": "No Wokwi CLI or VS Code executable, and no configured WOKWI_CLI_TOKEN in this cloud executor. User-side simulation evidence is required."
+    }
+  ],
+  "limitations": [
+    "Existing application is a full controller, not a minimal newly written Stage 2 application.",
+    "No feature or sensor behaviour verified by these build checks.",
+    "Static RAM allocation does not measure runtime stack growth.",
+    "Tilt diagram pin PB0.1 needs simulator pin-model validation in the peripheral stage.",
+    "Identity labels remain placeholders.",
+    "Course AI restrictions and missing rubric remain as recorded in Stage 1."
+  ]
+}
