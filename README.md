@@ -108,6 +108,16 @@ the measured pin levels now narrow the failure to the bus. The next trace also
 captures idle levels before the first transfer and the GPIO output/pull-up
 registers after recovery, to determine when the lines go low and whether the
 MCU released them.
+
+For a controlled comparison, `downloads/FlightHapticController-isolated-bus-test.zip`
+contains the same compiled firmware with only the MPU6050's SCL and SDA wires
+disconnected in `diagram.json`; both 4.7 kΩ pull-ups remain on PB8/PB9. Extract
+it into a separate folder and run Wokwi, then compare `PINS BOOT` and `SOFT
+lines` with the connected circuit. `IMU=FAULT` is expected because the sensor
+cannot respond. If the lines rise in this test, the connected sensor or its
+wires load the bus. If they remain low, the sensor is not the sole cause;
+inspect the pull-up supply, MCU pin model and bus configuration next. This
+comparison is a diagnostic experiment, not a working controller circuit.
 Host tests do not reproduce the actual Wokwi peripheral model.
 
 1. Download the new `downloads/FlightHapticController-project.zip` and extract it
