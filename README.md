@@ -9,7 +9,9 @@ returning to manual requires a new press while both axes are free.
 
 Download `downloads/FlightHapticController-project.zip` for the source and a
 compiled firmware image that can be opened directly with Wokwi in VS Code.
-Rebuild after editing the source. Simulator validation is still required.
+This is an instrumented diagnostic build, not a verified fix for the reported
+Wokwi startup failure. Rebuild after editing the source; simulator validation is
+still required.
 
 ## Build and test
 
@@ -62,18 +64,21 @@ require different calibration.
 
 ## Source layout and assumptions
 
-- `Core/Src/haptic_controller.c`: portable angle calculations, region FSMs,
-  servo angle targets and latched mode transitions.
-- `Core/Src/haptic_app.c`: I2C initialization/burst reads, signed acceleration
-  decoding, 20 ms scheduling, 30 ms button debounce and PWM/LED output.
-- `Core/Src/haptic_diagnostics.c`: USART1/PA9 status output at 115200 baud,
-  displayed in the Wokwi terminal to distinguish sensor errors from autopilot.
-- `Core/Src/soft_i2c.c` and `haptic_soft_i2c.c`: bounded, open-drain I2C
-  fallback using the same PB8/PB9 wires when hardware I2C times out.
-- `Core/Src/main.c`: generated peripheral setup and application polling.
+- `Core/Src/main.c`: all application implementation: angle calculations, FSMs,
+  I2C and GPIO fallback, scheduling, button debounce, PWM/LED output and USART1
+  diagnostics, alongside the generated peripheral setup.
+- `Core/Inc/main.h`: application types, numeric diagnostic enums and declarations.
+- `Core/Startup/`, the remaining generated `Core/Src/` support files, `Drivers/`
+  and the linker script: required STM32 startup, interrupt, CMSIS and HAL support.
+  Keep these files when building or submitting; the two application files do not
+  form a standalone firmware project.
 - `tests/`: native regression checks; run with `make test`.
 - `docs/assignment-validation.md`: FSM diagrams, boundary decisions and 1 g
   demonstration vectors.
+
+Host tests select sections of the same `main.c` implementation. The Makefile
+keeps bus and control code at `-O0`; only the UART diagnostic section uses `-Os`
+to fit the expanded trace within the MCU's 32 KB flash.
 
 Exact 50 degree axis magnitudes enter clamping and exact 20 degree tilt enters
 compliance, resolving equality gaps in the brief. Autopilot changes the mode
@@ -93,31 +98,56 @@ contain an observed-results video or a completed personal report.
 The initial green indication appears before sensor initialization finishes.
 Red can indicate either a sensor fault or a healthy, latched autopilot mode.
 Open the **Wokwi Terminal** and read the status messages from USART1 on PA9.
-They report sensor validity, the failing sensor operation, the I2C HAL status
-and error, the last identity-register value, and measured angles when valid.
+At level (`X=0, Y=0, Z=1`), `IMU=OK` with `mode=AUTO` requires a fresh blue-button
+press to restore manual. `IMU=FAULT` blocks manual release.
 
-At level (`X=0, Y=0, Z=1`), a valid sensor reading with autopilot still on
-requires a fresh blue-button press to restore manual. An active sensor fault
-blocks manual release. Check the diagram's PB8/SCL, PB9/SDA, AD0/GND and power
-connections if communication fails, and keep the exact terminal error for
-diagnosis. Do not change the safety checks to force the green LED on.
+The latest supplied log established a hardware timeout (`0x00000020`) followed
+by GPIO fallback initialization failing before the identity read was retried.
+The application error `0x00010000` covers multiple fallback failures; it does
+not establish that the physical bus is stuck. The expanded trace below is
+intended to distinguish pin levels, hardware wait flags and delay-clock faults.
+Host tests do not reproduce the actual Wokwi peripheral model.
 
-The updated sensor adapter uses the HAL register-memory APIs, including a
-repeated START for reads, instead of the generic master transmitter's TXDR
-preload path. It waits 100 ms after waking the MPU6050 and reinitializes I2C
-before retrying a failed connection. These changes are compiled and covered by
-host adapter tests; their behavior in the user's Wokwi session must be checked.
+1. Download the new `downloads/FlightHapticController-project.zip` and extract it
+   into a fresh directory to avoid running a stale firmware image.
+2. Open that extracted folder in VS Code and run **Wokwi: Start Simulator**.
+3. Copy the first five complete fault-record lines from the Wokwi terminal:
+   `mode=...`, `HW ...`, `PINS ...`, `SOFT ...` and `CLOCK ...`.
 
-If the hardware I2C operation times out (`err=0x00000020`), the firmware now
-disables that peripheral and tries standards-based GPIO I2C on the same PB8/PB9
-connections. It drives the lines low or releases them, checks every slave ACK,
-reads the real WHO_AM_I register and acceleration bytes, and bounds clock
-stretching and recovery. Ordinary sensor NACKs do not select this fallback.
-No wiring change or synthetic sensor data is involved.
+Each fault record reports the following fields. Hardware fields preserve the
+first failure before fallback changes the peripheral or pin configuration;
+software fields describe the latest recovery and delay observations.
 
-The terminal includes `bus=HW` or `bus=GPIO`. `hwerr` retains the original
-hardware timeout after a successful fallback, while `err` reports the current
-transport result. Thus `IMU=OK ... err=0x00000000 bus=GPIO hwerr=0x00000020`
-means genuine register reads succeeded after the hardware timeout. A failed
-fallback still reports `IMU=FAULT` and blocks manual release. The host tests
-include an edge-driven I2C slave model; Wokwi readback remains a separate check.
+| Line | Meaning |
+| --- | --- |
+| `mode=...` | Mode, IMU validity/fault, register, identity, HAL result, current `err`, selected `bus` and retained original `hwerr`. |
+| `HW` | `captured`, hardware error, last observed wait `flag`, and I2C `ISR`, `CR1`, `CR2`, `TIMINGR`. |
+| `PINS` | GPIOB `IDR`, `MODER`, `OTYPER`, `PUPDR`, `AFRH` captured at that hardware failure. |
+| `SOFT` | Recovery result, timing-fault code, and raw SCL/SDA levels before/after the latest recovery. |
+| `CLOCK` | SysTick `CTRL`, `LOAD`, first/last `VAL`, accumulated `cycles` and `polls` for the delay observation. |
+
+Numeric software codes are declared in `Core/Inc/main.h`:
+
+- `recover`: `0` OK, `1` NACK, `2` timeout, `3` bus-stuck result, `4` invalid
+  argument. Read it alongside `timing`: a delay-clock failure can induce a
+  recovery failure without proving that a slave holds the bus low.
+- `timing`: `0` no detected fault, `1` SysTick disabled, `2` invalid configuration,
+  `3` no observed counter progress, `4` millisecond guard, `5` polling guard.
+- `lines`: bit 0 is raw SCL and bit 1 is raw SDA: `0` both low, `1` SCL high only,
+  `2` SDA high only, `3` both high. The pair is before/after recovery, not proof
+  that a transfer or slave ACK succeeded.
+
+For a **pure hardware timeout** (`HW err=00000020`), the traced wait `flag` can
+identify TXIS (`00000002`), RXNE (`00000004`), STOPF (`00000020`), TC (`00000040`)
+or BUSY (`00008000`). These are flag masks, separate from the error code.
+`flag=00000000` means no wait flag was traced; it does not identify the cause.
+The supplied Makefile enables this read-only observer when compiling the HAL
+I2C driver, and the prebuilt ZIP includes it. A custom build must retain that
+driver-specific forced include to obtain the wait-flag trace.
+
+Register access uses `HAL_I2C_Mem_Read/Write` with repeated START for reads.
+A confirmed hardware timeout selects bounded open-drain GPIO I2C on PB8/PB9;
+ordinary NACKs do not select it. Both paths require actual sensor ACKs, identity
+and acceleration data. `IMU=OK ... bus=GPIO hwerr=0x00000020` would confirm
+successful sampled data through fallback after the original timeout. This has
+not yet been established in the reported Wokwi session.

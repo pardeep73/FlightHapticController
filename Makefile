@@ -28,6 +28,9 @@ ASM_SOURCES := $(wildcard Core/Startup/*.s)
 OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(C_SOURCES)) \
  $(patsubst %.s,$(BUILD_DIR)/%.o,$(ASM_SOURCES))
 
+# Observe the actual HAL wait flag without modifying the vendor driver source.
+$(BUILD_DIR)/Drivers/STM32C0xx_HAL_Driver/Src/stm32c0xx_hal_i2c.o: CPPFLAGS += -DHAPTIC_I2C_TRACE -include Core/Inc/main.h
+
 .PHONY: all clean test
 all: $(TARGET).elf $(TARGET).hex $(TARGET).bin
 

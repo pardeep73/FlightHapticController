@@ -1,6 +1,5 @@
 /* Exercise the real hardware adapter against register-aware HAL doubles. */
-#include "haptic_app.h"
-#include "haptic_soft_i2c.h"
+#include "main.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +19,7 @@ static unsigned cases;
 GPIO_TypeDef mock_gpio_a;
 GPIO_TypeDef mock_gpio_b;
 static I2C_HandleTypeDef i2c;
+static I2C_TypeDef i2c_registers;
 static TIM_HandleTypeDef timer;
 static uint32_t tick;
 static GPIO_PinState button;
@@ -51,6 +51,9 @@ static uint8_t write_values[16];
 static unsigned write_count;
 static bool sleeping;
 static uint32_t wake_tick;
+static bool trace_flag_checks;
+static uint32_t trace_last_flag;
+static bool deinit_clears_registers;
 
 /* Encode signed raw counts into the MPU6050's high-byte-first wire format. */
 static void acceleration(int x, int y, int z)
@@ -75,6 +78,13 @@ HAL_StatusTypeDef HAL_I2C_Mem_Read(I2C_HandleTypeDef *handle,
   ++read_count;
   if ((int)reg == fail_read_register)
   {
+    if (trace_flag_checks)
+    {
+      i2c_registers.ISR = 0x00008003U;
+      CHECK(HapticTraceI2CFlag(handle, 0x02U) == 1U);
+      i2c_registers.ISR = 0x00008002U;
+      CHECK(HapticTraceI2CFlag(handle, trace_last_flag) == 0U);
+    }
     last_error = read_error_code; /* Inject an actual HAL error bitmask. */
     return HAL_ERROR;
   }
@@ -132,6 +142,11 @@ HAL_StatusTypeDef HAL_I2C_DeInit(I2C_HandleTypeDef *handle)
 {
   CHECK(handle == &i2c);
   ++deinit_count;
+  if (deinit_clears_registers)
+  {
+    memset(&i2c_registers, 0, sizeof i2c_registers);
+    memset(&mock_gpio_b, 0, sizeof mock_gpio_b);
+  }
   return HAL_OK;
 }
 
@@ -228,6 +243,9 @@ void Error_Handler(void) { CHECK(false); }
 static void reset(GPIO_PinState initial_button)
 {
   tick = 0;
+  memset(&i2c_registers, 0, sizeof i2c_registers);
+  i2c.Instance = &i2c_registers;
+  memset(&mock_gpio_b, 0, sizeof mock_gpio_b);
   button = initial_button;
   auto_led = manual_led = GPIO_PIN_RESET;
   memset(pulses, 0, sizeof pulses);
@@ -246,6 +264,9 @@ static void reset(GPIO_PinState initial_button)
   write_count = 0;
   sleeping = true;
   wake_tick = 0;
+  trace_flag_checks = false;
+  trace_last_flag = 0x40U;
+  deinit_clears_registers = false;
   acceleration(0, 0, 16384);
 }
 
@@ -709,6 +730,69 @@ static void test_write_timeout_can_switch_to_software_bus(void)
   ++cases;
 }
 
+static void test_hardware_snapshot_precedes_fallback_deinit(void)
+{
+  reset(GPIO_PIN_RESET);
+  i2c_registers.CR1 = 0x00001001U;
+  i2c_registers.CR2 = 0x000120D0U;
+  i2c_registers.TIMINGR = 0x10805D88U;
+  mock_gpio_b.IDR = 0x00000300U;
+  mock_gpio_b.MODER = 0x000A0000U;
+  mock_gpio_b.OTYPER = 0x00000300U;
+  mock_gpio_b.PUPDR = 0x00050000U;
+  mock_gpio_b.AFR[1] = 0x00000066U;
+  fail_read_register = 0x75U;
+  read_error_code = 0x20U;
+  trace_flag_checks = true;
+  trace_last_flag = 0x40U;
+  deinit_clears_registers = true;
+  soft_init_success = true;
+  HapticApp_Init(&i2c, &timer);
+  CHECK(haptic_hw_i2c_status.captured);
+  CHECK(haptic_hw_i2c_status.error == 0x20U);
+  CHECK(haptic_hw_i2c_status.flag == 0x40U);
+  CHECK(haptic_hw_i2c_status.isr == 0x00008002U);
+  CHECK(haptic_hw_i2c_status.cr1 == 0x00001001U);
+  CHECK(haptic_hw_i2c_status.cr2 == 0x000120D0U);
+  CHECK(haptic_hw_i2c_status.timingr == 0x10805D88U);
+  CHECK(haptic_hw_i2c_status.gpio_idr == 0x00000300U);
+  CHECK(haptic_hw_i2c_status.moder == 0x000A0000U);
+  CHECK(haptic_hw_i2c_status.otyper == 0x00000300U);
+  CHECK(haptic_hw_i2c_status.pupdr == 0x00050000U);
+  CHECK(haptic_hw_i2c_status.afr == 0x00000066U);
+  CHECK(i2c_registers.CR1 == 0 && mock_gpio_b.MODER == 0);
+  CHECK(haptic_app_status.software_i2c);
+  ++cases;
+}
+
+static void test_hardware_snapshot_is_first_failure_and_init_resets(void)
+{
+  reset(GPIO_PIN_RESET);
+  fail_read_register = 0x75U;
+  trace_flag_checks = true;
+  trace_last_flag = 0x40U;
+  HapticApp_Init(&i2c, &timer);
+  CHECK(haptic_hw_i2c_status.captured);
+  CHECK(haptic_hw_i2c_status.error == 0x04U);
+  CHECK(haptic_hw_i2c_status.flag == 0x40U);
+  trace_last_flag = 0x04U;
+  i2c_registers.CR1 = 0x77U;
+  after(1000);
+  CHECK(haptic_hw_i2c_status.flag == 0x40U);
+  CHECK(haptic_hw_i2c_status.cr1 == 0U);
+  /* Outside an active hardware call, the observer only preserves HAL predicates. */
+  i2c_registers.ISR = 0x43U;
+  CHECK(HapticTraceI2CFlag(&i2c, 0x41U) == 1U);
+  CHECK(HapticTraceI2CFlag(&i2c, 0x44U) == 0U);
+  CHECK(haptic_hw_i2c_status.flag == 0x40U);
+  reset(GPIO_PIN_RESET);
+  HapticApp_Init(&i2c, &timer);
+  CHECK(!haptic_hw_i2c_status.captured);
+  after(20);
+  CHECK(!haptic_hw_i2c_status.captured);
+  ++cases;
+}
+
 int main(void)
 {
   test_initialization_and_wake();
@@ -733,6 +817,8 @@ int main(void)
   test_fallback_requires_correct_identity();
   test_software_error_translation();
   test_write_timeout_can_switch_to_software_bus();
+  test_hardware_snapshot_precedes_fallback_deinit();
+  test_hardware_snapshot_is_first_failure_and_init_resets();
   printf("PASS: %u adapter cases, %u checks (register I2C, wake, PWM, debounce, recovery, diagnostics)\n",
          cases, checks);
   return EXIT_SUCCESS;

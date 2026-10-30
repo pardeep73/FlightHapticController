@@ -8,15 +8,21 @@ and capture a video before treating these cases as submission evidence.
 
 | Requirement | Implementation / inspection point | Useful check |
 | --- | --- | --- |
-| MPU6050 accelerometer input | I2C acquisition in `Core/Src/haptic_app.c` | Wake the sensor, select ±2 g range, read all six acceleration bytes in one burst, and decode signed big-endian samples. |
-| Angle subroutine | `Core/Src/haptic_controller.c` | Check `roll = atan2f(ay, az)`, `pitch = atan2f(-ax, sqrtf(ay*ay + az*az))`, and `tilt = sqrtf(pitch*pitch + roll*roll)` in degrees. |
-| Independent pitch and roll haptics | Reusable axis FSM in `Core/Src/haptic_controller.c` | Exercise each sign, each entry threshold, and each release threshold independently. |
-| Combined tilt haptics | Tilt FSM in `Core/Src/haptic_controller.c` | Show tilt feedback while both individual axes remain free; then show the 140° tilt clamp. |
-| Automatic autopilot | Mode logic in `Core/Src/haptic_controller.c` | Both axis FSMs clamped must latch autopilot. A tilt clamp alone must not latch it. |
-| Button mode changes | PA12 acquisition/debounce in `Core/Src/haptic_app.c`; mode logic in controller | One event per debounced rising edge; manual can enter autopilot at any angle, while autopilot can leave only with both axes free. |
-| Mode LEDs | PA2 and PB11 in `Core/Src/haptic_app.c` | PA2 on and PB11 off in autopilot; the inverse in manual mode. |
-| Servo PWM and matched polling | TIM3 setup in `Core/Src/main.c`; control loop in `Core/Src/haptic_app.c` | 50 Hz PWM and one IMU/control update per 20 ms during normal operation. |
+| MPU6050 accelerometer input | I2C acquisition in `Core/Src/main.c` | Wake the sensor, select ±2 g range, read all six acceleration bytes in one burst, and decode signed big-endian samples. |
+| Angle subroutine | `Haptic_CalculateAngles` in `Core/Src/main.c` | Check `roll = atan2f(ay, az)`, `pitch = atan2f(-ax, sqrtf(ay*ay + az*az))`, and `tilt = sqrtf(pitch*pitch + roll*roll)` in degrees. |
+| Independent pitch and roll haptics | Reusable axis FSM in `Core/Src/main.c` | Exercise each sign, each entry threshold, and each release threshold independently. |
+| Combined tilt haptics | Tilt FSM in `Core/Src/main.c` | Show tilt feedback while both individual axes remain free; then show the 140° tilt clamp. |
+| Automatic autopilot | Mode logic in `Core/Src/main.c` | Both axis FSMs clamped must latch autopilot. A tilt clamp alone must not latch it. |
+| Button mode changes | PA12 acquisition/debounce and mode logic in `Core/Src/main.c` | One event per debounced rising edge; manual can enter autopilot at any angle, while autopilot can leave only with both axes free. |
+| Mode LEDs | PA2 and PB11 in `Core/Src/main.c` | PA2 on and PB11 off in autopilot; the inverse in manual mode. |
+| Servo PWM and matched polling | TIM3 setup and control loop in `Core/Src/main.c` | 50 Hz PWM and one IMU/control update per 20 ms during normal operation. |
 | Required hardware connections | `diagram.json`, GPIO setup, and `Core/Src/stm32c0xx_hal_msp.c` | Verify every pin in the table below. |
+
+All application code is consolidated in `Core/Src/main.c`, with types and
+declarations in `Core/Inc/main.h`. The generated STM32 startup, interrupt and
+system support, CMSIS/HAL drivers and linker script remain required; keep the
+complete project for a reproducible build. Host tests select sections of this
+same application implementation.
 
 The accelerometer equations estimate static orientation from gravity. They do not
 implement an aircraft dynamics model or distinguish gravity from manoeuvre
@@ -210,27 +216,27 @@ Mode and robustness checks:
 
 ## Evidence still required for submission
 
-The serial monitor on PA9/USART1 now reports a status line each second at
-115200 baud. `IMU=OK` means the current acceleration sample was valid;
-`mode=AUTO` may still be latched from an earlier fault and requires a safe,
-fresh button press. `IMU=FAULT` identifies the failed operation and includes
-the register address, WHO_AM_I value, HAL result and I2C error flags. Record
-that exact line when diagnosing a red-only startup instead of inferring sensor
-health from the mode LED.
+USART1/PA9 reports at 115200 baud. `IMU=OK` means the current acceleration sample
+was valid; `mode=AUTO` can remain latched and requires a fresh safe button press.
+`IMU=FAULT` blocks manual release. The latest supplied Wokwi log showed a hardware
+timeout followed by GPIO initialization failing before the identity read was
+retried. Its generic `0x00010000` application error does not establish a stuck
+physical bus.
 
-Register transfers use `HAL_I2C_Mem_Read/Write` with 8-bit addresses. Reads use
-a repeated START and a six-byte acceleration burst. Startup waits 100 ms after
-waking the sensor; a failed bus connection is retried after reinitializing I2C.
-Host tests exercise these API contracts and simulated wake/recovery conditions;
-they do not execute the Wokwi peripheral model.
+The current build adds measurement diagnostics to distinguish possible causes;
+it is not a verified Wokwi fix. Download the new project ZIP, extract it into a
+fresh directory, open that folder in VS Code and start Wokwi. Copy the first five
+complete fault-record lines: `mode=...`, `HW`, `PINS`, `SOFT` and `CLOCK`. See
+[the README diagnostic key](../README.md#if-the-green-led-flashes-once-and-only-red-stays-on)
+for field meanings and the numeric enums declared in `Core/Inc/main.h`.
+Hardware fields preserve the first failure; raw software line levels are from
+before/after the latest recovery and do not prove an ACK or completed transfer.
+Interpret the recovery result together with its delay-clock fault code.
 
-A hardware timeout now selects a bounded GPIO I2C fallback on the same PB8/PB9
-lines. This still reads the actual MPU6050 and rejects NACKs, stuck lines,
-invalid identity and invalid acceleration. Its protocol tests use a slave model
-that decodes START, address, data and ACK/NACK edges; they are not Wokwi runs.
-Check `bus=GPIO` and `IMU=OK` in the simulator to confirm actual communication.
-`hwerr=0x00000020` preserves the original hardware failure; `err` is the current
-bus result. Capture the exact line if the GPIO path also fails.
+The HAL register-memory path and GPIO fallback both require real sensor data.
+Host tests cover controller and simulated bus behavior, not the Wokwi peripheral
+model. Only the UART diagnostic section is size-optimized to fit the added trace
+in 32 KB; bus and control code retain `-O0`.
 
 Build and host-side controller checks can validate compilation, angle equations,
 FSM transitions, and command values. They do not establish that Wokwi rendered

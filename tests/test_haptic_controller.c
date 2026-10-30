@@ -1,5 +1,5 @@
 /* Host regression tests for the assignment's angle equations and FSM policy. */
-#include "haptic_controller.h"
+#include "main.h"
 
 #include <float.h>
 #include <math.h>

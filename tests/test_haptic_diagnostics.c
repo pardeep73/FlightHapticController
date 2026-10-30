@@ -1,6 +1,5 @@
 /* Compile the real diagnostic module against bounded register/tick doubles. */
-#include "haptic_diagnostics.h"
-#include "haptic_app.h"
+#include "main.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +21,8 @@ MockUSART mock_usart1;
 MockRCC mock_rcc;
 HapticController haptic_controller;
 HapticAppStatus haptic_app_status;
+HapticSoftI2CStatus haptic_soft_i2c_status;
+HapticHardwareI2CStatus haptic_hw_i2c_status;
 
 static uint32_t tick;
 static unsigned tick_reads;
@@ -30,7 +31,7 @@ static unsigned uart_clock_count;
 static unsigned pin_init_count;
 static GPIO_TypeDef *configured_port;
 static GPIO_InitTypeDef configured_pin;
-static char captured[512];
+static char captured[1024];
 static size_t captured_length;
 
 void Mock_EnableGPIOAClock(void) { ++gpio_clock_count; }
@@ -90,6 +91,8 @@ static void reset(uint32_t initial_tick)
   haptic_controller = (HapticController){0};
   haptic_controller.sensor_valid = true;
   haptic_app_status = (HapticAppStatus){0};
+  haptic_soft_i2c_status = (HapticSoftI2CStatus){0};
+  haptic_hw_i2c_status = (HapticHardwareI2CStatus){0};
   haptic_app_status.identity = 0x68U;
   haptic_app_status.register_address = 0x3BU;
   clear_capture();
@@ -100,7 +103,7 @@ static void reset(uint32_t initial_tick)
 /* Drain at a fixed timestamp: one call must correspond to exactly one byte. */
 static void drain_line(void)
 {
-  for (unsigned i = 0; i < 160U; ++i)
+  for (unsigned i = 0; i < 640U; ++i)
   {
     const bool sent = poll();
     if (!sent)
@@ -266,6 +269,90 @@ static void test_software_transport_status(void)
   CHECK(strstr(captured, "IMU=OK") != NULL);
   CHECK(strstr(captured, "bus=GPIO hwerr=0x00000020") != NULL);
   CHECK(strstr(captured, "err=0x00000000 bus=") != NULL);
+  CHECK(strstr(captured, "HW captured=") == NULL);
+  ++cases;
+}
+
+static void test_fault_trace_preserves_observations(void)
+{
+  reset(0U);
+  haptic_controller.sensor_valid = false;
+  haptic_controller.mode = HAPTIC_AUTOPILOT;
+  haptic_app_status.software_i2c = true;
+  haptic_app_status.hardware_error = 0x20U;
+  haptic_app_status.fault = HAPTIC_SENSOR_RECOVERY;
+  haptic_app_status.i2c_error = 0x10000U;
+  haptic_hw_i2c_status = (HapticHardwareI2CStatus){
+    .captured = true, .error = 0x20U, .flag = 0x40U, .isr = 0x8002U,
+    .cr1 = 1U, .cr2 = 0x120D0U, .timingr = 0x10805D88U,
+    .gpio_idr = 0x300U, .moder = 0xA0000U, .otyper = 0x300U,
+    .pupdr = 0x50000U, .afr = 0x66U
+  };
+  haptic_soft_i2c_status = (HapticSoftI2CStatus){
+    .recover_result = SOFT_I2C_TIMEOUT, .timing_fault = HAPTIC_TIMING_NO_PROGRESS,
+    .systick_ctrl = 5U, .systick_load = 47999U,
+    .val_first = 12345U, .val_last = 12345U,
+    .elapsed_cycles = 0U, .polls = 4096U,
+    .lines_before = 3U, .lines_after = 3U
+  };
+  tick = 1000U; CHECK(!poll());
+  /* Queued observations must remain intact when the next recovery changes state. */
+  haptic_hw_i2c_status = (HapticHardwareI2CStatus){0};
+  haptic_soft_i2c_status = (HapticSoftI2CStatus){0};
+  drain_line();
+  CHECK(strstr(captured, "mode=AUTO IMU=FAULT fault=I2C recovery failed") == captured);
+  CHECK(strstr(captured, "HW captured=1 err=00000020 flag=00000040 ISR=00008002 CR1=00000001 CR2=000120D0 TIMINGR=10805D88\r\n") != NULL);
+  CHECK(strstr(captured, "PINS IDR=00000300 MODER=000A0000 OTYPER=00000300 PUPDR=00050000 AFRH=00000066\r\n") != NULL);
+  CHECK(strstr(captured, "SOFT recover=2 timing=3 lines=3/3\r\n") != NULL);
+  CHECK(strstr(captured, "CLOCK CTRL=00000005 LOAD=47999 VAL=12345/12345 cycles=0 polls=4096\r\n") != NULL);
+  CHECK(captured_length > 160U && captured_length < 640U);
+  ++cases;
+}
+
+static void test_hardware_trace_without_fallback(void)
+{
+  reset(0U);
+  haptic_controller.sensor_valid = false;
+  haptic_app_status.fault = HAPTIC_SENSOR_WHO_READ;
+  haptic_hw_i2c_status.captured = true;
+  haptic_hw_i2c_status.flag = 0x02U;
+  haptic_hw_i2c_status.isr = 0x8000U;
+  tick = 1000U; CHECK(!poll());
+  drain_line();
+  CHECK(strstr(captured, "bus=HW") != NULL);
+  CHECK(strstr(captured, "HW captured=1") != NULL);
+  CHECK(strstr(captured, "flag=00000002 ISR=00008000") != NULL);
+  ++cases;
+}
+
+static void test_fault_trace_maximum_numeric_fields_fit(void)
+{
+  reset(0U);
+  haptic_controller.sensor_valid = false;
+  haptic_controller.mode = HAPTIC_AUTOPILOT;
+  haptic_app_status.fault = HAPTIC_SENSOR_CONFIG;
+  haptic_app_status.software_i2c = true;
+  haptic_app_status.identity = haptic_app_status.register_address = UINT8_MAX;
+  haptic_app_status.hal_status = HAL_TIMEOUT;
+  haptic_app_status.i2c_error = haptic_app_status.hardware_error = UINT32_MAX;
+  haptic_hw_i2c_status = (HapticHardwareI2CStatus){
+    .captured = true, .error = UINT32_MAX, .flag = UINT32_MAX, .isr = UINT32_MAX,
+    .cr1 = UINT32_MAX, .cr2 = UINT32_MAX, .timingr = UINT32_MAX,
+    .gpio_idr = UINT32_MAX, .moder = UINT32_MAX, .otyper = UINT32_MAX,
+    .pupdr = UINT32_MAX, .afr = UINT32_MAX
+  };
+  haptic_soft_i2c_status = (HapticSoftI2CStatus){
+    .recover_result = SOFT_I2C_INVALID_ARGUMENT, .timing_fault = HAPTIC_TIMING_POLL_GUARD,
+    .systick_ctrl = UINT32_MAX, .systick_load = UINT32_MAX,
+    .val_first = UINT32_MAX, .val_last = UINT32_MAX,
+    .elapsed_cycles = UINT32_MAX, .polls = UINT32_MAX,
+    .lines_before = UINT8_MAX, .lines_after = UINT8_MAX
+  };
+  tick = 1000U; CHECK(!poll());
+  drain_line();
+  CHECK(strstr(captured, "CLOCK CTRL=FFFFFFFF LOAD=4294967295 VAL=4294967295/4294967295 cycles=4294967295 polls=4294967295\r\n") != NULL);
+  CHECK(strstr(captured, "SOFT recover=4 timing=5 lines=255/255\r\n") != NULL);
+  CHECK(captured_length < 640U);
   ++cases;
 }
 
@@ -278,6 +365,9 @@ int main(void)
   test_nonblocking_tx_stall_and_recovery();
   test_tick_wrap();
   test_software_transport_status();
+  test_fault_trace_preserves_observations();
+  test_hardware_trace_without_fallback();
+  test_fault_trace_maximum_numeric_fields_fit();
   printf("PASS: %u diagnostics cases, %u checks (PA9 USART, readable status, queued TX, wrap)\n",
           cases, checks);
   return EXIT_SUCCESS;

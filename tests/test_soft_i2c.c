@@ -1,5 +1,5 @@
 /* Exercise the real bit-level driver against an edge-driven I2C slave model. */
-#include "soft_i2c.h"
+#include "main.h"
 
 #include <stdio.h>
 #include <stdlib.h>
